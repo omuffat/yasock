@@ -12,7 +12,7 @@
 # Always start with AC_INIT
 AC_INIT([yasock], [0.1], [contact@comoe-networks.com], [Yet Another Sock Program])
 AM_INIT_AUTOMAKE
-
+AC_LANG([C])
 ## Automake Variables (in this file ??)
 #AM_LDFLAGS for specifying options to linker
 AC_ARG_ENABLE([debug], [  --enable-debug    Turn on debugging],

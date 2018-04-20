@@ -3,3 +3,7 @@
 Yet Another Sock
 
 As the name says, yasock is a program like sock (See Fall/Stevens TCP/IP Protocols book)
+It aims to let user modify several parameters of TCP/IP stack in order to analyze how Operating Systems react to different situations.
+
+This program is under GNU General Public License copyright
+
