@@ -30,18 +30,14 @@ static	struct option	tab_options[] = {
 int		main(int argc, char **argv) {
   int		rc = 0;
   sock_env_t	*sock_env = NULL;
-  char		*prog_name = NULL;
 
-  if (*argv) {
-    prog_name = *argv;
-  }
   rc = yasock_init_env(&sock_env);
   if (rc != 0) {
     fprintf(stderr, "Error while initializing environment, aborting\n");
     exit(1);
   }
   if (yasock_parse_options(argc, argv, sock_env) < 0) {
-    fprintf(stderr, "Error while parsing options, aborting\n");
+    yasock_print_usage();
     yasock_clean_env(&sock_env);
     exit(2);
   }
@@ -57,7 +53,7 @@ int		main(int argc, char **argv) {
     yasock_print_version();
     break;
   case YASOCK_SOCK_HELP:
-    yasock_print_usage(prog_name);
+    yasock_print_usage();
   default:
     break;
   }
@@ -246,26 +242,30 @@ void		yasock_print_version(void) {
   printf("%s (%s) %s\n", PACKAGE, PACKAGE_NAME, PACKAGE_VERSION);
 }
 
-void		yasock_print_usage(char *prog_name) {
-  printf("usage: \n\tServer: %s [options] -s [port]\n\tClient: %s [options] -c <IP addr> [port]\n",
-	 prog_name, prog_name);
-  printf("options are:\n");
-  printf("\t--help: Prints this help and exits\n");
-  printf("\t--version: Prints version of program and exits\n");
-  printf("\t-v: Verbose\n");
-  printf("\t-r n:  #bytes per read() for \"sink\" server (default %u)\n", YASOCK_DFT_READ_BUFSIZE);
-  printf("\t-w n:  #bytes per write() for \"source\" server (default %u)\n", YASOCK_DFT_WRITE_BUFSIZE);
-  printf("\t-n n:  #buffers to write for \"source\" client (default %u)\n", YASOCK_DEFAULT_WR_COUNT);
-  printf("\t-N:    TCP_NODELAY option (Disable Nagle's algorithm)\n");
-  printf("\t-P n:  #ms to pause before first read or write (source/sink)\n");
-  printf("\t-p n:  #ms to pause between each read or write (source/sink)\n");
-  printf("\t-Q n:  #ms to pause after receiving FIN, but before close\n");
-  printf("\t-O n:  #ms to pause after listen, but before first accept\n");
-  printf("\t-R n:  Set the #bytes for the socket receive buffer (SO_RCVBUF option). Some Kernels double this value.\n");
-  printf("\t-S n:  Set the #bytes for the socket sending buffer (SO_SNDBUF option). Some Kernels double this value.\n");
-  printf("\t-X n:  Set the Maximum Segment Size (in bytes)\n");
-  //printf("\t\n");
+void		yasock_print_usage(void) {
+  printf("yasock is a client/server program which aim to manipulate TCP/IP stack properties. yasock can operate as client or as server.\n");
+  printf("Server mode listens on port (defaults to %u) and waits for arbitrary data from client.\n", YASOCK_DEFAULT_PORT);
+  printf("Client mode connects to the server program, sends arbitrary data to it and exits when done.\n");
+  printf("\nOptions below are used to modify the behavior of the TCP/IP stack.\n");
   printf("\n");
+  printf("usage:  Server: %s [options] -s [port]\n\tClient: %s [options] -c <IP addr> [port]\n\n",
+	 PACKAGE, PACKAGE);
+  printf(" --help: Prints program description and exits\n");
+  printf(" --version: Prints version of program and exits\n");
+  printf(" -v: Verbose\n");
+  printf(" -r n:  #bytes per read() for \"sink\" server (default %u)\n", YASOCK_DFT_READ_BUFSIZE);
+  printf(" -w n:  #bytes per write() for \"source\" server (default %u)\n", YASOCK_DFT_WRITE_BUFSIZE);
+  printf(" -n n:  #buffers to write for \"source\" client (default %u)\n", YASOCK_DEFAULT_WR_COUNT);
+  printf(" -N:    TCP_NODELAY option (Disable Nagle's algorithm)\n");
+  printf(" -P n:  #ms to pause before first read or write (source/sink)\n");
+  printf(" -p n:  #ms to pause between each read or write (source/sink)\n");
+  printf(" -Q n:  #ms to pause after receiving FIN, but before close\n");
+  printf(" -O n:  #ms to pause after listen, but before first accept\n");
+  printf(" -R n:  Set the #bytes for the socket receive buffer (SO_RCVBUF option). Some Kernels double this value.\n");
+  printf(" -S n:  Set the #bytes for the socket sending buffer (SO_SNDBUF option). Some Kernels double this value.\n");
+  printf(" -X n:  Set the Maximum Segment Size (in bytes)\n");
+  //printf(" \n");
+  printf("\nReport bugs to <contact@comoe-networks.com>.\n");
 }
 
 

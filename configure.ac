@@ -27,6 +27,8 @@ AC_ARG_ENABLE([debug], [  --enable-debug    Turn on debugging],
 		       *) AC_MSG_ERROR([bad value ${enableval} for --enable-debug]) ;;
 		       esac],[debug=false])
 AM_CONDITIONAL([DEBUG], [test x$debug = xtrue])
+dnl Define man generator program
+AM_MISSING_PROG(HELP2MAN, help2man)
 
 
 ## Generate a config.h from config.h.in
