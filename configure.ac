@@ -40,7 +40,7 @@ AC_CONFIG_HEADERS([config.h])
 
 
 ## Checks for header files
-##AC_CHECK_HEADERS([sys/types.h])
+dnl AC_CHECK_HEADERS([sys/types.h])
 AC_CHECK_HEADERS([sys/socket.h], AC_DEFINE([HAVE_SYS_SOCKET_H], 1,
 				 [Define to 1 if you have the <sys/socket.h> header file. MY MSG]))
 AC_CHECK_HEADERS([netinet/in.h], AC_DEFINE([HAVE_NETINET_IN_H], 1,
@@ -62,6 +62,21 @@ AC_CHECK_TYPE([struct ip_mreq], [
 		 #endif
 		 ]]
 		)
+# TCP_MAXSEG preprocessor macro for setsockopt (MSS)
+AC_CHECK_DECL([TCP_MAXSEG], [
+		      AC_DEFINE([HAVE_TCP_MAXSEG_H], 1, [Define to 1 if you have TCP_MAXSEG option])],
+          [], [[  #ifdef HAVE_SYS_SOCKET_H
+	      	 # include <sys/socket.h>
+		 #endif
+		 #ifdef HAVE_NETINET_IN_H
+	      	 # include <netinet/in.h>
+		 #endif
+		 #ifdef HAVE_NETINET_IN_H
+	      	 # include <netinet/tcp.h>
+		 #endif
+		 ]]
+		)
+
 
 dnl AC_MSG_CHECKING("whether flock struct is linux ordered or not")
 dnl AC_TRY_RUN([

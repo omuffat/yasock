@@ -3,7 +3,7 @@
 .SH NAME
 yasock \- manual page for yasock (Yet Another Sock Program) 0.1.0
 .SH DESCRIPTION
-yasock is a client/server program used to manipulates TCP/IP properties. yasock can operate as client or as server.
+yasock is a client/server program which aim to manipulate TCP/IP stack properties. yasock can operate as client or as server.
 Server mode listens on port (defaults to 62067) and waits for arbitrary data from client.
 Client mode connects to the server program, sends arbitrary data to it and exits when done.
 .PP

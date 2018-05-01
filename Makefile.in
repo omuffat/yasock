@@ -91,7 +91,7 @@ NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
 bin_PROGRAMS = yasock$(EXEEXT)
-@DEBUG_TRUE@am__append_1 = -g2
+@DEBUG_TRUE@am__append_1 = -g2 -DYASOCK_DEBUG
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -199,7 +199,7 @@ CTAGS = ctags
 CSCOPE = cscope
 AM_RECURSIVE_TARGETS = cscope
 am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/config.h.in AUTHORS \
-	COPYING ChangeLog INSTALL NEWS README compile depcomp \
+	COPYING ChangeLog INSTALL NEWS README TODO compile depcomp \
 	install-sh missing
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
@@ -307,10 +307,10 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+AM_CFLAGS = $(WARNINGCFLAGS) $(am__append_1)
 yasock_SOURCES = main.c server.c client.c socket_opt.c yasock.h
 man1_MANS = yasock.man
 AM_CPPFLAGS = 
-AM_CFLAGS = $(am__append_1)
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 

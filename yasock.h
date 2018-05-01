@@ -96,6 +96,7 @@ typedef	struct		sock_env_s {
 int		yasock_init_env(sock_env_t**);
 int		yasock_clean_env(sock_env_t**);
 int		yasock_parse_options(int, char**, sock_env_t*);
+void		yasock_print_help(void);
 void		yasock_print_usage(void);
 void		yasock_print_version(void);
 

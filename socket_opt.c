@@ -83,7 +83,7 @@ int			yasock_set_socket_ipopt(int sd, sock_env_t *sock_env) {
   if (sock_env->mcast_addr) {
     inet_pton(sock_env->af_family, sock_env->mcast_addr, &(ip_mreq.imr_multiaddr));
     ip_mreq.imr_interface.s_addr = INADDR_ANY;
-    rc = setsockopt(sd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &ip_mreq, sizeof(struct ip_mreqn));
+    rc = setsockopt(sd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &ip_mreq, sizeof(struct ip_mreq));
     if (rc < 0) {
       perror("[yasock_set_socket_ipopt] failed to set Multicast IPv4 Address");
     }
@@ -107,17 +107,28 @@ int			yasock_set_socket_tcpopt(int sd, sock_env_t *sock_env) {
   }
   if (sock_env->no_delay) {
     value = 1;
-    rc = setsockopt(sd, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(int));
+    rc = setsockopt(sd, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(unsigned int));
     if (rc < 0) {
       perror("[yasock_set_socket_tcpopt] Could not disable Nagle algorithm");
     }
   }
+#ifdef	HAVE_TCP_MAXSEG_H
+  /*
+   *	on *BSD systems, net.inet.tcp.mssdflt is usually set to 536.
+   *	So, you can't set a MSS > 536 if you don't set this value higher (like 1460
+   *	on Ethernet link).
+   *	See sysctl variable: net.inet.tcp.mssdflt
+   *	See also tcp_default_ctloutput routine in sys/netinet/tcp_usrreq.c
+   *	See also tcp_mss_update, tcp_mss, tcp_mssopt in sys/netinet/tcp_input.c
+   *
+   */
   if (sock_env->mss) {
-    value = sock_env->mss;
-    rc = setsockopt(sd, IPPROTO_TCP, TCP_MAXSEG, &value, sizeof(int));
+    value = (unsigned int)sock_env->mss;
+    rc = setsockopt(sd, IPPROTO_TCP, TCP_MAXSEG, &value, sizeof(unsigned int));
     if (rc < 0) {
-      perror("[yasock_set_socket_tcpopt] Could set Maximum Segment Size");
+      perror("[yasock_set_socket_tcpopt] Could not set Maximum Segment Size");
     }
   }
+#endif	// HAVE_TCP_MAXSEG_H
   return rc;
 }

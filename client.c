@@ -48,7 +48,7 @@ int		yasock_cli_writeread(int sd, sock_env_t *sock_env) {
   // Send buffer as many time as wr_count
   for (i = 0; i < sock_env->wr_count; i++) {
     // Write one buffer into the wire
-    if ((wr_size = write(sd, write_buf, sock_env->wr_buf_size)) < 0) {
+    if ((wr_size = send(sd, write_buf, sock_env->wr_buf_size, 0)) < 0) {
       perror("[yasock_cli_writeread] cannot write data to host");
       break;
     }
@@ -59,7 +59,7 @@ int		yasock_cli_writeread(int sd, sock_env_t *sock_env) {
 	     i+1, sock_env->wr_count, wr_size, total_wr, sock_env->wr_count * sock_env->wr_buf_size);
     }
     // Read one buffer from the wire
-    rd_size = read(sd, rd_buf, sock_env->rd_buf_size);
+    rd_size = recv(sd, rd_buf, sock_env->rd_buf_size, 0);
     if (rd_size < 0) {
       perror("[yasock_cli_writeread] Cannot make a read");
       break;
@@ -77,7 +77,7 @@ int		yasock_cli_writeread(int sd, sock_env_t *sock_env) {
   if (i >= sock_env->wr_count) {
     // Peer may have not sent all data in our previous read
     while (total_rd < total_wr) {
-      rd_size = read(sd, rd_buf, sock_env->rd_buf_size);
+      rd_size = recv(sd, rd_buf, sock_env->rd_buf_size, 0);
       if (rd_size < 0) {
 	perror("[yasock_cli_writeread] Cannot make a read");
 	break;
@@ -150,7 +150,7 @@ int		yasock_cli_writeread_sendall_first(int sd, sock_env_t *sock_env) {
   // Send buffer as many time as wr_count
   for (i = 0; i < sock_env->wr_count; i++) {
     // Write one buffer into the wire
-    if ((wr_size = write(sd, write_buf, sock_env->wr_buf_size)) < 0) {
+    if ((wr_size = send(sd, write_buf, sock_env->wr_buf_size, 0)) < 0) {
       perror("[yasock_cli_writeread] cannot write data to host");
       break;
     }
@@ -169,7 +169,7 @@ int		yasock_cli_writeread_sendall_first(int sd, sock_env_t *sock_env) {
   }
   // Read one buffer from the wire as long as they are data
   while (total_wr > 0) {
-    rd_size = read(sd, rd_buf, sock_env->rd_buf_size);
+    rd_size = recv(sd, rd_buf, sock_env->rd_buf_size, 0);
     if (rd_size < 0) {
       perror("[yasock_cli_writeread_sendall_first] Cannot make a read");
       break;
@@ -218,7 +218,7 @@ int		yasock_cli_writeonly(int sd, sock_env_t *sock_env) {
   // Send buffer as many time as wr_count
   for (i = 0; i < sock_env->wr_count; i++) {
     // Write one buffer into the wire
-    if ((wr_size = write(sd, write_buf, sock_env->wr_buf_size)) < 0) {
+    if ((wr_size = send(sd, write_buf, sock_env->wr_buf_size, 0)) < 0) {
       perror("[yasock_cli_writeonly] cannot write data to host");
       break;
     }

@@ -80,11 +80,11 @@ int			yasock_srv_readwrite(int cli_sd, const struct sockaddr *in_addr,
   if (sock_env->first_read_sleep > 0) {
     usleep(sock_env->first_read_sleep);
   }
-  while ((size_read = read(cli_sd, (void*)data_buf, sock_env->rd_buf_size)) > 0) {
+  while ((size_read = recv(cli_sd, (void*)data_buf, sock_env->rd_buf_size, 0)) > 0) {
     if (sock_env->verbose) {
       printf("[yasock_srv_readwrite] Read %lu bytes\n", size_read);
     }
-    if ((size_write = write(cli_sd, (void*)data_buf, size_read)) < 0) {
+    if ((size_write = send(cli_sd, (void*)data_buf, size_read, 0)) < 0) {
       perror("[yasock_srv_readwrite] Error while writing to client");
       rc = -1;
       break;
@@ -128,7 +128,7 @@ int			yasock_srv_readonly(int cli_sd, const struct sockaddr *in_addr,
   if (sock_env->first_read_sleep > 0) {
     usleep(sock_env->first_read_sleep);
   }
-  while ((size_read = read(cli_sd, (void*)data_buf, sock_env->rd_buf_size)) > 0) {
+  while ((size_read = recv(cli_sd, (void*)data_buf, sock_env->rd_buf_size, 0)) > 0) {
     if (sock_env->verbose) {
       printf("[yasock_srv_readwrite] Read %lu bytes\n", size_read);
     }

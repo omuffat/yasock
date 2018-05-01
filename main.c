@@ -31,6 +31,9 @@ int		main(int argc, char **argv) {
   int		rc = 0;
   sock_env_t	*sock_env = NULL;
 
+#ifdef	YASOCK_DEBUG
+  fprintf(stderr, "Warning: %s is in debug mode\n", PACKAGE);
+#endif	// YASOCK_DEBUG
   rc = yasock_init_env(&sock_env);
   if (rc != 0) {
     fprintf(stderr, "Error while initializing environment, aborting\n");
@@ -53,7 +56,7 @@ int		main(int argc, char **argv) {
     yasock_print_version();
     break;
   case YASOCK_SOCK_HELP:
-    yasock_print_usage();
+    yasock_print_help();
   default:
     break;
   }
@@ -144,21 +147,27 @@ int		yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
 	sock_env->wr_count = atoi(optarg);
       }
       break;
+      // #ms to pause between each read/write
+    case 'p':
+      if (optarg) {
+	sock_env->read_sleep = sock_env->write_sleep = atoi(optarg) * 1000;
+      }
+      break;
       // Read buffer
     case 'r':
       if (optarg) {
 	sock_env->rd_buf_size = atoi(optarg);
       }
       break;
+      // Verbose
+    case 'v':
+      sock_env->verbose++;
+      break;
       // Write buffer
     case 'w':
       if (optarg) {
 	sock_env->wr_buf_size = atoi(optarg);
       }
-      break;
-      // Verbose
-    case 'v':
-      sock_env->verbose++;
       break;
       // NO_DELAY tcp socket option (disable nagle algorithm)
     case 'N':
@@ -174,12 +183,6 @@ int		yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
     case 'P':
       if (optarg) {
 	sock_env->first_read_sleep = sock_env->first_write_sleep = atoi(optarg) * 1000;
-      }
-      break;
-      // #ms to pause between each read/write
-    case 'p':
-      if (optarg) {
-	sock_env->read_sleep = sock_env->write_sleep = atoi(optarg) * 1000;
       }
       break;
       // #ms to pause before close
@@ -201,23 +204,27 @@ int		yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
       }
       break;
       // MSS (in bytes)
+#ifdef	HAVE_TCP_MAXSEG_H
     case 'X':
       if (optarg) {
 	sock_env->mss = atoi(optarg);
       }
       break;
+#endif	// HAVE_TCP_MAXSEG_H
     default:
       rc = -1;
       break;
     }
   }
-  // one of option -s or -c is mandatory
-  if (sock_env->mode != YASOCK_SOCK_CLIENT && sock_env->mode != YASOCK_SOCK_SERVER) {
-    fprintf(stderr, "Don't known what to launch: client or server ?\n");
-    rc = -1;
-  }
   // Process non option argument
   switch (sock_env->mode) {
+  case YASOCK_SOCK_VERSION:
+  case YASOCK_SOCK_HELP:
+    // Should not be here, but in case of
+#ifdef	YASOCK_DEBUG
+    fprintf(stderr, "Mode %u is version or help. But we didn't get out of parse_options\n");
+#endif	// YASOCK_DEBUG
+    break;
     // First non option for the client mode must be ip address of server
   case YASOCK_SOCK_CLIENT:
     if (optind < argc && argv[optind]) {
@@ -225,6 +232,11 @@ int		yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
     }
     break;
   case YASOCK_SOCK_SERVER:
+    break;
+  // one of option -s or -c is mandatory
+  default:
+    fprintf(stderr, "Don't known what to launch: client or server ?\n");
+    rc = -1;
     break;
   }
   // First non option for server and client should be the port
@@ -242,12 +254,18 @@ void		yasock_print_version(void) {
   printf("%s (%s) %s\n", PACKAGE, PACKAGE_NAME, PACKAGE_VERSION);
 }
 
-void		yasock_print_usage(void) {
+void		yasock_print_help(void) {
+  // Print Description
   printf("yasock is a client/server program which aim to manipulate TCP/IP stack properties. yasock can operate as client or as server.\n");
   printf("Server mode listens on port (defaults to %u) and waits for arbitrary data from client.\n", YASOCK_DEFAULT_PORT);
   printf("Client mode connects to the server program, sends arbitrary data to it and exits when done.\n");
   printf("\nOptions below are used to modify the behavior of the TCP/IP stack.\n");
   printf("\n");
+  // Print usage for options
+  yasock_print_usage();
+}
+
+void		yasock_print_usage(void) {
   printf("usage:  Server: %s [options] -s [port]\n\tClient: %s [options] -c <IP addr> [port]\n\n",
 	 PACKAGE, PACKAGE);
   printf(" --help: Prints program description and exits\n");
@@ -263,7 +281,9 @@ void		yasock_print_usage(void) {
   printf(" -O n:  #ms to pause after listen, but before first accept\n");
   printf(" -R n:  Set the #bytes for the socket receive buffer (SO_RCVBUF option). Some Kernels double this value.\n");
   printf(" -S n:  Set the #bytes for the socket sending buffer (SO_SNDBUF option). Some Kernels double this value.\n");
+#ifdef	HAVE_TCP_MAXSEG_H
   printf(" -X n:  Set the Maximum Segment Size (in bytes)\n");
+#endif	// HAVE_TCP_MAXSEG_H
   //printf(" \n");
   printf("\nReport bugs to <contact@comoe-networks.com>.\n");
 }
@@ -275,7 +295,7 @@ usage: sock [ options ] <host> <port>       (for client; default)
        sock [ options ] -i <host> <port>           (for "source" client)
        sock [ options ] -i -s [ <IPaddr> ] <port>  (for "sink" server)
        options: -b n  bind n as client's local port number
-         -c    convert newline to CR/LF & vice versa
+         -c    convert newline to CR/LF & vice versa (Replaced by selection of congestion algorithm)
          -f a.b.c.d.p  foreign IP address = a.b.c.d, foreign port# = p
          -g a.b.c.d  loose source route
          -h    issue TCP half close on standard input EOF
@@ -306,7 +326,7 @@ usage: sock [ options ] <host> <port>       (for client; default)
          -I    SIGIO signal
          -J n  IP_TTL option
          -K    SO_KEEPALIVE option
-         -L n  SO_LINGER option, n = linger time
+         -L n  SO_LINGER option, n = linger time (in seconds)
          -N    TCP_NODELAY option
          -O n  #ms to pause after listen, but before first accept
          -P n  #ms to pause before first read or write (source/sink)

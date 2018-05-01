@@ -6,10 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 	## Changed
+	Replaced write(2) calls with send(2)
+	Replaced read(2) calls with recv(2)
 
 	## Added
-	Version option
-
+	Version and Help options
+	Automated generation of man page with help2man
+	MSS (option -X): Let user specify a TCP MSS
+	
 	## Removed
 
 
