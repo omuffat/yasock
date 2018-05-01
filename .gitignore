@@ -10,3 +10,4 @@
 .dirstamp
 *.o
 *~
+*.tar.gz

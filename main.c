@@ -1,6 +1,12 @@
 
 #include	"yasock.h"
 
+/*
+ *	List of available options for program
+ *
+ *	if options is available in short format, don't forget to update YASOCK_OPTSTRING
+ *
+ */
 static	struct option	tab_options[] = {
   { "client",		no_argument,		0,	'c' },
   { "write-count",	required_argument,	0,	'n' },
@@ -15,13 +21,20 @@ static	struct option	tab_options[] = {
   { "rcv-buf",		required_argument,	0,	'R' },
   { "snd-buf",		required_argument,	0,	'S' },
   { "no-delay",		no_argument,		0,	'N' },
+  { "mss",		required_argument,	0,	'X' },
+  { YASOCK_VERSION_OPT,	no_argument,		0,	0 },
+  { YASOCK_HELP_OPT,	no_argument,		0,	0 },
   { 0,			0,			0,	0 }
 };
 
 int		main(int argc, char **argv) {
   int		rc = 0;
   sock_env_t	*sock_env = NULL;
+  char		*prog_name = NULL;
 
+  if (*argv) {
+    prog_name = *argv;
+  }
   rc = yasock_init_env(&sock_env);
   if (rc != 0) {
     fprintf(stderr, "Error while initializing environment, aborting\n");
@@ -29,6 +42,7 @@ int		main(int argc, char **argv) {
   }
   if (yasock_parse_options(argc, argv, sock_env) < 0) {
     fprintf(stderr, "Error while parsing options, aborting\n");
+    yasock_clean_env(&sock_env);
     exit(2);
   }
   switch (sock_env->mode) {
@@ -38,6 +52,12 @@ int		main(int argc, char **argv) {
   case YASOCK_SOCK_SERVER:
     rc = yasock_launch_server(sock_env);
     break;
+    // Print Version
+  case YASOCK_SOCK_VERSION:
+    yasock_print_version();
+    break;
+  case YASOCK_SOCK_HELP:
+    yasock_print_usage(prog_name);
   default:
     break;
   }
@@ -92,20 +112,28 @@ int		yasock_clean_env(sock_env_t **sock_env) {
 int		yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
   int		rc = 0;
   int		opt = 0;
-  int		tab_options_idx = 0;
-  char		*prog_name = NULL;
+  int		option_index = -1;
 
   if (!argc || !argv || !sock_env) {
     return -1;
   }
-  if (*argv) {
-    prog_name = *argv;
-  }
-  while ((opt = getopt_long(argc, argv, YASOCK_OPTSTRING, tab_options, &tab_options_idx)) != -1) {
+  while ((opt = getopt_long(argc, argv, YASOCK_OPTSTRING, tab_options, &option_index)) != -1) {
     switch (opt) {
-    case 0:
       // Long option that has no associated short option
-      break;
+    case 0:
+      // Version option
+      if (tab_options[option_index].name &&
+	  !strcmp(tab_options[option_index].name, YASOCK_VERSION_OPT)) {
+	sock_env->mode = YASOCK_SOCK_VERSION;
+	return 0;
+      }
+      if (tab_options[option_index].name &&
+	  !strcmp(tab_options[option_index].name, YASOCK_HELP_OPT)) {
+	sock_env->mode = YASOCK_SOCK_HELP;
+	return 0;
+      }
+      // Unknown long option, return error
+      return -1;
       // Server mode
     case 's':
       sock_env->mode = YASOCK_SOCK_SERVER;
@@ -135,6 +163,10 @@ int		yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
       // Verbose
     case 'v':
       sock_env->verbose++;
+      break;
+      // NO_DELAY tcp socket option (disable nagle algorithm)
+    case 'N':
+      sock_env->no_delay = 1;
       break;
       // #ms to pause after listen, but before first accept
     case 'O':
@@ -172,12 +204,13 @@ int		yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
 	sock_env->so_sndbuf = atoi(optarg);
       }
       break;
-      // NO_DELAY tcp socket option (disable nagle algorithm)
-    case 'N':
-      sock_env->no_delay = 1;
+      // MSS (in bytes)
+    case 'X':
+      if (optarg) {
+	sock_env->mss = atoi(optarg);
+      }
       break;
     default:
-      yasock_print_usage(prog_name);
       rc = -1;
       break;
     }
@@ -185,7 +218,6 @@ int		yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
   // one of option -s or -c is mandatory
   if (sock_env->mode != YASOCK_SOCK_CLIENT && sock_env->mode != YASOCK_SOCK_SERVER) {
     fprintf(stderr, "Don't known what to launch: client or server ?\n");
-    yasock_print_usage(prog_name);
     rc = -1;
   }
   // Process non option argument
@@ -210,22 +242,30 @@ int		yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
   return rc;
 }
 
+void		yasock_print_version(void) {
+  printf("%s (%s) %s\n", PACKAGE, PACKAGE_NAME, PACKAGE_VERSION);
+}
+
 void		yasock_print_usage(char *prog_name) {
   printf("usage: \n\tServer: %s [options] -s [port]\n\tClient: %s [options] -c <IP addr> [port]\n",
 	 prog_name, prog_name);
   printf("options are:\n");
+  printf("\t--help: Prints this help and exits\n");
+  printf("\t--version: Prints version of program and exits\n");
   printf("\t-v: Verbose\n");
   printf("\t-r n:  #bytes per read() for \"sink\" server (default %u)\n", YASOCK_DFT_READ_BUFSIZE);
   printf("\t-w n:  #bytes per write() for \"source\" server (default %u)\n", YASOCK_DFT_WRITE_BUFSIZE);
   printf("\t-n n:  #buffers to write for \"source\" client (default %u)\n", YASOCK_DEFAULT_WR_COUNT);
-  printf("\t-N:    TCP_NODELAY option (Disable Nagle's algorithm\n");
+  printf("\t-N:    TCP_NODELAY option (Disable Nagle's algorithm)\n");
   printf("\t-P n:  #ms to pause before first read or write (source/sink)\n");
   printf("\t-p n:  #ms to pause between each read or write (source/sink)\n");
   printf("\t-Q n:  #ms to pause after receiving FIN, but before close\n");
   printf("\t-O n:  #ms to pause after listen, but before first accept\n");
   printf("\t-R n:  Set the #bytes for the socket receive buffer (SO_RCVBUF option). Some Kernels double this value.\n");
   printf("\t-S n:  Set the #bytes for the socket sending buffer (SO_SNDBUF option). Some Kernels double this value.\n");
+  printf("\t-X n:  Set the Maximum Segment Size (in bytes)\n");
   //printf("\t\n");
+  printf("\n");
 }
 
 

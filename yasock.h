@@ -18,6 +18,8 @@
 #include	<getopt.h>
 #include	<errno.h>
 
+#include	"config.h"
+
 #ifndef	MIN
 #define	MIN(x,y)	(((x) < (y)) ? (x) : (y))
 #endif	// MIN
@@ -25,11 +27,17 @@
 #define	MAX(x,y)	(((x) > (y)) ? (x) : (y))
 #endif	// MIN
 
-#define	YASOCK_OPTSTRING		"cn:p:r:svw:NO:P:Q:R:S:"
+// Options related
+#define	YASOCK_OPTSTRING		"cn:p:r:svw:NO:P:Q:R:S:X:"
+// version string for comparison in yasock_parse_options
+#define	YASOCK_VERSION_OPT		"version"
+#define	YASOCK_HELP_OPT			"help"
 
 #define	YASOCK_SOCK_UNKNOWN		0x00
 #define	YASOCK_SOCK_CLIENT		0x01
 #define	YASOCK_SOCK_SERVER		0x02
+#define	YASOCK_SOCK_VERSION		0x03
+#define	YASOCK_SOCK_HELP		0x04
 
 // seconds, microsecond
 #define	YASOCK_DEFAULT_TIMEOUT		{ 0, 500000 }
@@ -70,7 +78,8 @@ typedef	struct		sock_env_s {
   unsigned int		ttl;
   unsigned int		tos;
   char			*mcast_addr;
-  // Port
+  // TCP/UDP related
+  unsigned short	mss;
   unsigned short	port;
   // Buffer related
   unsigned int		so_rcvbuf;
@@ -88,6 +97,7 @@ int		yasock_init_env(sock_env_t**);
 int		yasock_clean_env(sock_env_t**);
 int		yasock_parse_options(int, char**, sock_env_t*);
 void		yasock_print_usage(char*);
+void		yasock_print_version(void);
 
 /*
  *	server.c

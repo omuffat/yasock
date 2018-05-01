@@ -5,10 +5,28 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+	## Changed
+
+	## Added
+	Version option
+
+	## Removed
+
+
+## [0.1.0] - 2018-04-20
+	## Added
+	Integration of Autotools
+	Integration of Git
+
 	### Changed
 	Modified COPYING for applying GNU General Public License
+	Modified INSTALL for supressing symbolic link
 
-## [0.9.0] - 2018-04-20
+	## Removed
+
+
+## SKELETON
+## [0.1.0] - 2018-04-20
 	### Added
 
 	### Changed

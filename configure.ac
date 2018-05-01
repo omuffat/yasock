@@ -1,20 +1,25 @@
-###
-### commands to run
-###
-### aclocal && automake --add-missing
-### autoconf && ./configure [--enable-debug]
+dnl
+dnl 'Discard Next Line': don't output comments in generated configure script
+dnl '#' will appear in generated configure script
+dnl
+dnl commands to run
+dnl
+dnl aclocal && automake --add-missing --copy --force-missing
+dnl autoconf && ./configure [--enable-debug]
+dnl Process this file with autoconf to produce a configure script.
 
-# arguments of macro should be enclosed within '[' and ']'
+dnl arguments of macro should be enclosed within '[' and ']'
 
-## End of tuto
+dnl End of tuto
 
-# Process this file with autoconf to produce a configure script.
 # Always start with AC_INIT
-AC_INIT([yasock], [0.1], [contact@comoe-networks.com], [Yet Another Sock Program])
-AM_INIT_AUTOMAKE
+AC_INIT([Yet Another Sock Program], [0.1.0], [contact@comoe-networks.com],
+	     [yasock], [https://github.com/omuffat/yasock])
+dnl Set option for automake in this macro call
+AM_INIT_AUTOMAKE()
 AC_LANG([C])
 ## Automake Variables (in this file ??)
-#AM_LDFLAGS for specifying options to linker
+dnl AM_LDFLAGS for specifying options to linker
 AC_ARG_ENABLE([debug], [  --enable-debug    Turn on debugging],
 		       [case "${enableval}" in
 		       yes) debug=true ;;
@@ -56,15 +61,15 @@ AC_CHECK_TYPE([struct ip_mreq], [
 		 ]]
 		)
 
-#AC_MSG_CHECKING("whether flock struct is linux ordered or not")
-#AC_TRY_RUN([
-  #include <fcntl.h>
-#  struct flock lock = { 1, 2, 3, 4, 5 };
-#  int main() { return lock.l_type==1 ? 0 : 1; }
-#], [
-#    AC_DEFINE(HAVE_FLOCK_LINUX) 
-#    AC_MSG_RESULT("yes")
-#], AC_MSG_RESULT("no") )
+dnl AC_MSG_CHECKING("whether flock struct is linux ordered or not")
+dnl AC_TRY_RUN([
+dnl  #include <fcntl.h>
+dnl  struct flock lock = { 1, 2, 3, 4, 5 };
+dnl  int main() { return lock.l_type==1 ? 0 : 1; }
+dnl], [
+dnl    AC_DEFINE(HAVE_FLOCK_LINUX) 
+dnl    AC_MSG_RESULT("yes")
+dnl], AC_MSG_RESULT("no") )
 
 
 ## Checks for compiler characteristics
@@ -76,9 +81,10 @@ AC_CHECK_TYPE([struct ip_mreq], [
 ## Checks for system services
 
 
-#AC_CONFIG_FILES([FILE...])
+# Generate Makefile
 AC_CONFIG_FILES([Makefile])
 
 ### Always make a call to AC_OUTPUT at the end
 AC_OUTPUT
 
+dnl Any output after AC_OUTPUT will be copied verbatim at the end of configure script

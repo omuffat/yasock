@@ -112,5 +112,12 @@ int			yasock_set_socket_tcpopt(int sd, sock_env_t *sock_env) {
       perror("[yasock_set_socket_tcpopt] Could not disable Nagle algorithm");
     }
   }
+  if (sock_env->mss) {
+    value = sock_env->mss;
+    rc = setsockopt(sd, IPPROTO_TCP, TCP_MAXSEG, &value, sizeof(int));
+    if (rc < 0) {
+      perror("[yasock_set_socket_tcpopt] Could set Maximum Segment Size");
+    }
+  }
   return rc;
 }
