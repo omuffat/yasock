@@ -12,3 +12,7 @@
 *.o
 *~
 *.tar.gz
+*.tar.xz
+*.tar.bzip2
+*.tar.Z
+
