@@ -62,6 +62,14 @@ AC_CHECK_TYPE([struct ip_mreq], [
 		 #endif
 		 ]]
 		)
+# struct linger for setsockopt SO_LINGER
+AC_CHECK_TYPE([struct linger], [
+		      AC_DEFINE([HAVE_SO_LINGER_H], 1, [Define to 1 if you have struct linger])],
+          [], [[  #ifdef HAVE_SYS_SOCKET_H
+	      	 # include <sys/socket.h>
+		 #endif
+		 ]]
+		)
 # TCP_MAXSEG preprocessor macro for setsockopt (MSS)
 AC_CHECK_DECL([TCP_MAXSEG], [
 		      AC_DEFINE([HAVE_TCP_MAXSEG_H], 1, [Define to 1 if you have TCP_MAXSEG option])],

@@ -8,12 +8,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 	## Changed
 	Replaced write(2) calls with send(2)
 	Replaced read(2) calls with recv(2)
+	In server mode, call yasock_set_socket_options for cli_sd in I/O routines
 
 	## Added
 	Version and Help options
 	Automated generation of man page with help2man
 	MSS (option -X): Let user specify a TCP MSS
-	
+	Half Close (option -h): Let client performs a shutdown when sent all data
+	Linger option (option -L): Set SO_LINGER on socket
+
 	## Removed
 
 

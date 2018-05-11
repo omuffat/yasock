@@ -8,23 +8,25 @@
  *
  */
 static	struct option	tab_options[] = {
-  { "client",		no_argument,		0,	'c' },
-  { "write-count",	required_argument,	0,	'n' },
-  { "sleep-rw",		required_argument,	0,	'p' },
-  { "server",		no_argument,		0,	's' },
-  { "read-buffer",	required_argument,	0,	'r' },
-  { "write-buffer",	required_argument,	0,	'w' },
-  { "verbose",		no_argument,		0,	'v' },
-  { "first-sleep-rw",	required_argument,	0,	'P' },
-  { "sleep-fin",	required_argument,	0,	'Q' },
-  { "sleep-listen",	required_argument,	0,	'O' },
-  { "rcv-buf",		required_argument,	0,	'R' },
-  { "snd-buf",		required_argument,	0,	'S' },
-  { "no-delay",		no_argument,		0,	'N' },
-  { "mss",		required_argument,	0,	'X' },
-  { YASOCK_VERSION_OPT,	no_argument,		0,	0 },
-  { YASOCK_HELP_OPT,	no_argument,		0,	0 },
-  { 0,			0,			0,	0 }
+  { "client",			no_argument,		0,	'c' },
+  { YASOCK_SHUTDOWN_OPT,	no_argument,		0,	'h' },
+  { "write-count",		required_argument,	0,	'n' },
+  { "sleep-rw",			required_argument,	0,	'p' },
+  { "read-buffer",		required_argument,	0,	'r' },
+  { "server",			no_argument,		0,	's' },
+  { "verbose",			no_argument,		0,	'v' },
+  { "write-buffer",		required_argument,	0,	'w' },
+  { YASOCK_LINGER_OPT,		required_argument,	0,	'l' },
+  { "no-delay",			no_argument,		0,	'N' },
+  { "sleep-listen",		required_argument,	0,	'O' },
+  { "first-sleep-rw",		required_argument,	0,	'P' },
+  { "sleep-fin",		required_argument,	0,	'Q' },
+  { "rcv-buf",			required_argument,	0,	'R' },
+  { "snd-buf",			required_argument,	0,	'S' },
+  { "mss",			required_argument,	0,	'X' },
+  { YASOCK_VERSION_OPT,		no_argument,		0,	0 },
+  { YASOCK_HELP_OPT,		no_argument,		0,	0 },
+  { 0,				0,			0,	0 }
 };
 
 int		main(int argc, char **argv) {
@@ -57,7 +59,10 @@ int		main(int argc, char **argv) {
     break;
   case YASOCK_SOCK_HELP:
     yasock_print_help();
+  // one of option -s or -c is mandatory
   default:
+    fprintf(stderr, "Don't known what to launch: client or server ?\n");
+    rc = -1;
     break;
   }
   yasock_clean_env(&sock_env);
@@ -133,13 +138,16 @@ int		yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
       }
       // Unknown long option, return error
       return -1;
-      // Server mode
-    case 's':
-      sock_env->mode = YASOCK_SOCK_SERVER;
-      break;
       // Client mode
     case 'c':
       sock_env->mode = YASOCK_SOCK_CLIENT;
+      if (optarg) {
+	sock_env->ip_addr = strdup(optarg);
+      }
+      break;
+      // Half close
+    case 'h':
+      YASOCK_SET_FLAG(sock_env->opt_flags, YASOCK_SHUTDOWN_FLAG);
       break;
       // Write Count
     case 'n':
@@ -159,9 +167,13 @@ int		yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
 	sock_env->rd_buf_size = atoi(optarg);
       }
       break;
+      // Server mode
+    case 's':
+      sock_env->mode = YASOCK_SOCK_SERVER;
+      break;
       // Verbose
     case 'v':
-      sock_env->verbose++;
+      YASOCK_SET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG);
       break;
       // Write buffer
     case 'w':
@@ -169,9 +181,15 @@ int		yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
 	sock_env->wr_buf_size = atoi(optarg);
       }
       break;
+      // SO_LINGER socket option (see socket(7))
+    case 'L':
+      if (optarg) {
+	sock_env->linger = atoi(optarg);
+      }
+      break;
       // NO_DELAY tcp socket option (disable nagle algorithm)
     case 'N':
-      sock_env->no_delay = 1;
+      YASOCK_SET_FLAG(sock_env->opt_flags, YASOCK_NODELAY_FLAG);
       break;
       // #ms to pause after listen, but before first accept
     case 'O':
@@ -216,36 +234,9 @@ int		yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
       break;
     }
   }
-  // Process non option argument
-  switch (sock_env->mode) {
-  case YASOCK_SOCK_VERSION:
-  case YASOCK_SOCK_HELP:
-    // Should not be here, but in case of
-#ifdef	YASOCK_DEBUG
-    fprintf(stderr, "Mode %u is version or help. But we didn't get out of parse_options\n");
-#endif	// YASOCK_DEBUG
-    break;
-    // First non option for the client mode must be ip address of server
-  case YASOCK_SOCK_CLIENT:
-    if (optind < argc && argv[optind]) {
-      sock_env->ip_addr = strdup(argv[optind++]);
-    }
-    break;
-  case YASOCK_SOCK_SERVER:
-    break;
-  // one of option -s or -c is mandatory
-  default:
-    fprintf(stderr, "Don't known what to launch: client or server ?\n");
-    rc = -1;
-    break;
-  }
   // First non option for server and client should be the port
   if (optind < argc && argv[optind]) {
     sock_env->port = atoi(argv[optind]);
-  }
-  if (sock_env->mode == YASOCK_SOCK_CLIENT && !sock_env->ip_addr) {
-    fprintf(stderr, "Don't know where to connect\n");
-    rc = -1;
   }
   return rc;
 }
@@ -270,15 +261,19 @@ void		yasock_print_usage(void) {
 	 PACKAGE, PACKAGE);
   printf(" --help: Prints program description and exits\n");
   printf(" --version: Prints version of program and exits\n");
-  printf(" -v: Verbose\n");
-  printf(" -r n:  #bytes per read() for \"sink\" server (default %u)\n", YASOCK_DFT_READ_BUFSIZE);
-  printf(" -w n:  #bytes per write() for \"source\" server (default %u)\n", YASOCK_DFT_WRITE_BUFSIZE);
+  printf(" -h:    half closes TCP connexion after sending data\n");
   printf(" -n n:  #buffers to write for \"source\" client (default %u)\n", YASOCK_DEFAULT_WR_COUNT);
-  printf(" -N:    TCP_NODELAY option (Disable Nagle's algorithm)\n");
-  printf(" -P n:  #ms to pause before first read or write (source/sink)\n");
   printf(" -p n:  #ms to pause between each read or write (source/sink)\n");
-  printf(" -Q n:  #ms to pause after receiving FIN, but before close\n");
+  printf(" -r n:  #bytes per read() for \"sink\" server (default %u)\n", YASOCK_DFT_READ_BUFSIZE);
+  printf(" -v:    verbose\n");
+  printf(" -w n:  #bytes per write() for \"source\" server (default %u)\n", YASOCK_DFT_WRITE_BUFSIZE);
+#ifdef	HAVE_SO_LINGER_H
+  printf(" -L n   SO_LINGER option, n = linger time (in seconds)\n");
+#endif	// HAVE_SO_LINGER_H
+  printf(" -N:    TCP_NODELAY option (Disable Nagle's algorithm)\n");
   printf(" -O n:  #ms to pause after listen, but before first accept\n");
+  printf(" -P n:  #ms to pause before first read or write (source/sink)\n");
+  printf(" -Q n:  #ms to pause after receiving FIN, but before close\n");
   printf(" -R n:  Set the #bytes for the socket receive buffer (SO_RCVBUF option). Some Kernels double this value.\n");
   printf(" -S n:  Set the #bytes for the socket sending buffer (SO_SNDBUF option). Some Kernels double this value.\n");
 #ifdef	HAVE_TCP_MAXSEG_H

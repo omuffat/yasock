@@ -26,6 +26,9 @@ int			yasock_set_socket_options(int sd, sock_env_t *sock_env) {
 int			yasock_set_socket_sockopt(int sd, sock_env_t *sock_env) {
   int			rc = 0;
   int			value = 0;
+#ifdef	HAVE_SO_LINGER_H
+  struct linger		linger_opt = { 0, 0 };
+#endif	// HAVE_SO_LINGER_H
 
   if (sd < 0 || !sock_env) {
     return -1;
@@ -48,6 +51,17 @@ int			yasock_set_socket_sockopt(int sd, sock_env_t *sock_env) {
       perror("[yasock_set_socket_opt] failed to set SO_SNDBUF");
     }
   }
+#ifdef	HAVE_SO_LINGER_H
+  // Linger option
+  if (sock_env->linger > 0) {
+    linger_opt.l_onoff = 1;
+    linger_opt.l_linger = sock_env->linger;
+    rc = setsockopt(sd, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(struct linger));
+    if (rc < 0) {
+      perror("[yasock_set_socket_opt] failed to set SO_LINGER");
+    }
+  }
+#endif	// HAVE_SO_LINGER_H
   return rc;
 }
 
@@ -105,7 +119,7 @@ int			yasock_set_socket_tcpopt(int sd, sock_env_t *sock_env) {
   if (sd < 0 || !sock_env) {
     return -1;
   }
-  if (sock_env->no_delay) {
+  if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_NODELAY_FLAG)) {
     value = 1;
     rc = setsockopt(sd, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(unsigned int));
     if (rc < 0) {

@@ -28,11 +28,14 @@
 #endif	// MIN
 
 // Options related
-#define	YASOCK_OPTSTRING		"cn:p:r:svw:NO:P:Q:R:S:X:"
+#define	YASOCK_OPTSTRING		"c:hn:p:r:svw:L:NO:P:Q:R:S:X:"
 // version string for comparison in yasock_parse_options
 #define	YASOCK_VERSION_OPT		"version"
 #define	YASOCK_HELP_OPT			"help"
+#define	YASOCK_SHUTDOWN_OPT		"shutdown"
+#define	YASOCK_LINGER_OPT		"linger"
 
+// yasock Mode of processing
 #define	YASOCK_SOCK_UNKNOWN		0x00
 #define	YASOCK_SOCK_CLIENT		0x01
 #define	YASOCK_SOCK_SERVER		0x02
@@ -61,12 +64,20 @@
 #define	YASOCK_MIN_SO_RCVBUF		256
 #define	YASOCK_MIN_SO_SNDBUF		2048
 
+// OPTION FLAGS
+#define	YASOCK_VERBOSE_FLAG		0x0001
+#define	YASOCK_NODELAY_FLAG		0x0002
+#define	YASOCK_SHUTDOWN_FLAG		0x0004
+// OPTION FLAGS MACROs
+#define	YASOCK_SET_FLAG(set, flag)	((set) |= (flag))
+#define	YASOCK_ISSET_FLAG(set, flag)	(((set) & (flag)) == (flag))
+#define YASOCK_CLEAR_FLAG(set, flag)	((set) &= ~(flag))
+
 typedef	struct		sock_env_s {
   char			*ip_addr;
   unsigned char		af_family;
   unsigned char		mode;
-  unsigned char		verbose;
-  unsigned char		no_delay;
+  unsigned short	opt_flags;
   // Sleep part (in microseconds)
   unsigned int		listen_sleep;	// Sleep before accept(2) (for server only)
   unsigned int		first_read_sleep;	// Sleep before first read(2)
@@ -78,6 +89,8 @@ typedef	struct		sock_env_s {
   unsigned int		ttl;
   unsigned int		tos;
   char			*mcast_addr;
+  // Linger option
+  int			linger;
   // TCP/UDP related
   unsigned short	mss;
   unsigned short	port;

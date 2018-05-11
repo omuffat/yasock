@@ -4293,6 +4293,20 @@ $as_echo "#define HAVE_IP_MREQ_H 1" >>confdefs.h
 
 fi
 
+# struct linger for setsockopt SO_LINGER
+ac_fn_c_check_type "$LINENO" "struct linger" "ac_cv_type_struct_linger" "  #ifdef HAVE_SYS_SOCKET_H
+	      	 # include <sys/socket.h>
+		 #endif
+
+
+"
+if test "x$ac_cv_type_struct_linger" = xyes; then :
+
+
+$as_echo "#define HAVE_SO_LINGER_H 1" >>confdefs.h
+
+fi
+
 # TCP_MAXSEG preprocessor macro for setsockopt (MSS)
 ac_fn_c_check_decl "$LINENO" "TCP_MAXSEG" "ac_cv_have_decl_TCP_MAXSEG" "  #ifdef HAVE_SYS_SOCKET_H
 	      	 # include <sys/socket.h>

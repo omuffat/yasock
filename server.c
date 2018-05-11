@@ -62,35 +62,39 @@ int			yasock_launch_server(sock_env_t *sock_env) {
   return rc;
 }
 
-int			yasock_srv_readwrite(int cli_sd, const struct sockaddr *in_addr,
-					 sock_env_t *sock_env) {
+/*
+ *	Read only data
+ *	No write back
+ *
+ *	Closes the client socket cli_sd at the end of this routine
+ *
+ */
+int			yasock_srv_readonly(int cli_sd, const struct sockaddr *in_addr,
+					sock_env_t *sock_env) {
   int			rc = 0;
   char			*data_buf = NULL;
   ssize_t		size_read = 0;
-  ssize_t		size_write = 0;
   
   if (cli_sd < 0 || !in_addr || !sock_env) {
     return -1;
   }
+  // Set socket options
+  // Inheritance of setsockopt is not guaranteed
+  rc = yasock_set_socket_options(cli_sd, sock_env);
+  // Set buffer for reading data
   if ((data_buf = malloc(sock_env->rd_buf_size)) == NULL) {
     printf("[yasock_srv_readwrite] Cannot malloc %u len data\n", sock_env->rd_buf_size);
     close(cli_sd);
     return -1;
   }
+  // performs sleep before first read
   if (sock_env->first_read_sleep > 0) {
     usleep(sock_env->first_read_sleep);
   }
+  // Reads data
   while ((size_read = recv(cli_sd, (void*)data_buf, sock_env->rd_buf_size, 0)) > 0) {
-    if (sock_env->verbose) {
+    if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
       printf("[yasock_srv_readwrite] Read %lu bytes\n", size_read);
-    }
-    if ((size_write = send(cli_sd, (void*)data_buf, size_read, 0)) < 0) {
-      perror("[yasock_srv_readwrite] Error while writing to client");
-      rc = -1;
-      break;
-    }
-    if (sock_env->verbose) {
-      printf("[yasock_srv_readwrite] Wrote %lu bytes\n", size_write);
     }
     // If enabled, sleep between each read
     if (sock_env->read_sleep) {
@@ -107,30 +111,48 @@ int			yasock_srv_readwrite(int cli_sd, const struct sockaddr *in_addr,
 }
 
 /*
- *	Read only data
- *	No write back
+ *	For each read block, write it back to client
+ *
+ *
+ *	Closes the client socket cli_sd at the end of this routine
  *
  */
-int			yasock_srv_readonly(int cli_sd, const struct sockaddr *in_addr,
-					sock_env_t *sock_env) {
+int			yasock_srv_readwrite(int cli_sd, const struct sockaddr *in_addr,
+					 sock_env_t *sock_env) {
   int			rc = 0;
   char			*data_buf = NULL;
   ssize_t		size_read = 0;
+  ssize_t		size_write = 0;
   
   if (cli_sd < 0 || !in_addr || !sock_env) {
     return -1;
   }
+  // Set socket options
+  // Inheritance of setsockopt is not guaranteed
+  rc = yasock_set_socket_options(cli_sd, sock_env);
+  // Set buffer for read/write operation
   if ((data_buf = malloc(sock_env->rd_buf_size)) == NULL) {
     printf("[yasock_srv_readwrite] Cannot malloc %u len data\n", sock_env->rd_buf_size);
     close(cli_sd);
     return -1;
   }
+  // Performs a sleep before first read
   if (sock_env->first_read_sleep > 0) {
     usleep(sock_env->first_read_sleep);
   }
+  // Reads data
   while ((size_read = recv(cli_sd, (void*)data_buf, sock_env->rd_buf_size, 0)) > 0) {
-    if (sock_env->verbose) {
+    if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
       printf("[yasock_srv_readwrite] Read %lu bytes\n", size_read);
+    }
+    // Write back what we just read
+    if ((size_write = send(cli_sd, (void*)data_buf, size_read, 0)) < 0) {
+      perror("[yasock_srv_readwrite] Error while writing to client");
+      rc = -1;
+      break;
+    }
+    if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
+      printf("[yasock_srv_readwrite] Wrote %lu bytes\n", size_write);
     }
     // If enabled, sleep between each read
     if (sock_env->read_sleep) {
