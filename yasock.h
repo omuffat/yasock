@@ -28,12 +28,14 @@
 #endif	// MIN
 
 // Options related
-#define	YASOCK_OPTSTRING		"c:hn:p:r:svw:L:NO:P:Q:R:S:X:"
+#define	YASOCK_OPTSTRING		"c:hn:p:r:svw:x:y:L:NO:P:Q:R:S:X:"
 // version string for comparison in yasock_parse_options
 #define	YASOCK_VERSION_OPT		"version"
 #define	YASOCK_HELP_OPT			"help"
 #define	YASOCK_SHUTDOWN_OPT		"shutdown"
 #define	YASOCK_LINGER_OPT		"linger"
+#define	YASOCK_RCVTIMEO_OPT		"rtimeout" // x
+#define	YASOCK_SNDTIMEO_OPT		"stimeout" // y
 
 // yasock Mode of processing
 #define	YASOCK_SOCK_UNKNOWN		0x00
@@ -91,6 +93,9 @@ typedef	struct		sock_env_s {
   char			*mcast_addr;
   // Linger option
   int			linger;
+  // read/write timeout
+  unsigned int		recv_timeout; // in milliseconds
+  unsigned int		snd_timeout; // in milliseconds
   // TCP/UDP related
   unsigned short	mss;
   unsigned short	port;

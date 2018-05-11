@@ -3,12 +3,11 @@
 .SH NAME
 yasock \- manual page for yasock (Yet Another Sock Program) 0.1.0
 .SH DESCRIPTION
-Don't known what to launch: client or server ?
-yasock is a client/server program which aim to manipulate TCP/IP stack properties. yasock can operate as client or as server.
+yasock is a client/server program which aim to manipulate TCP/IP socket properties. yasock can operate as client or as server.
 Server mode listens on port (defaults to 62067) and waits for arbitrary data from client.
 Client mode connects to the server program, sends arbitrary data to it and exits when done.
 .PP
-Options below are used to modify the behavior of the TCP/IP stack.
+Options below are used to modify the behavior of the TCP/IP socket.
 .PP
 usage:  Server: yasock [options] \fB\-s\fR [port]
 .IP
@@ -35,6 +34,12 @@ verbose
 .TP
 \fB\-w\fR n:
 #bytes per write() for "source" server (default 2048)
+.TP
+\fB\-x\fR n
+#ms for SO_RCVTIMEO (receive timeout)
+.TP
+\fB\-y\fR n
+#ms for SO_SNDTIMEO (send timeout)
 .TP
 \fB\-L\fR n
 SO_LINGER option, n = linger time (in seconds)

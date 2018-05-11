@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 	MSS (option -X): Let user specify a TCP MSS
 	Half Close (option -h): Let client performs a shutdown when sent all data
 	Linger option (option -L): Set SO_LINGER on socket
+	Timeout send/recv: SO_RCVTIMEO (-x) and SO_SNDTIMEO (-y)
 
 	## Removed
 

@@ -29,6 +29,7 @@ int			yasock_set_socket_sockopt(int sd, sock_env_t *sock_env) {
 #ifdef	HAVE_SO_LINGER_H
   struct linger		linger_opt = { 0, 0 };
 #endif	// HAVE_SO_LINGER_H
+  struct timeval	tv = { 0, 0 };
 
   if (sd < 0 || !sock_env) {
     return -1;
@@ -62,6 +63,24 @@ int			yasock_set_socket_sockopt(int sd, sock_env_t *sock_env) {
     }
   }
 #endif	// HAVE_SO_LINGER_H
+  // RECV TIMEOUT OPTION
+  if (sock_env->recv_timeout) {
+    tv.tv_sec = (unsigned int)(sock_env->recv_timeout / (unsigned int)1000);
+    tv.tv_usec = (unsigned int)((sock_env->recv_timeout % (unsigned int)1000) * 1000);
+    rc = setsockopt(sd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(struct timeval));
+    if (rc < 0) {
+      perror("[yasock_set_socket_opt] failed to set SO_RCVTIMEO");
+    }
+  }
+  // SND TIMEOUT OPTION
+  if (sock_env->snd_timeout) {
+    tv.tv_sec = (unsigned int)(sock_env->snd_timeout / (unsigned int)1000);
+    tv.tv_usec = (unsigned int)((sock_env->snd_timeout % (unsigned int)1000) * 1000);
+    rc = setsockopt(sd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(struct timeval));
+    if (rc < 0) {
+      perror("[yasock_set_socket_opt] failed to set SO_SNDTIMEO");
+    }
+  }
   return rc;
 }
 

@@ -16,7 +16,9 @@ static	struct option	tab_options[] = {
   { "server",			no_argument,		0,	's' },
   { "verbose",			no_argument,		0,	'v' },
   { "write-buffer",		required_argument,	0,	'w' },
-  { YASOCK_LINGER_OPT,		required_argument,	0,	'l' },
+  { YASOCK_RCVTIMEO_OPT,	required_argument,	0,	'x' },
+  { YASOCK_SNDTIMEO_OPT,	required_argument,	0,	'y' },
+  { YASOCK_LINGER_OPT,		required_argument,	0,	'L' },
   { "no-delay",			no_argument,		0,	'N' },
   { "sleep-listen",		required_argument,	0,	'O' },
   { "first-sleep-rw",		required_argument,	0,	'P' },
@@ -59,6 +61,7 @@ int		main(int argc, char **argv) {
     break;
   case YASOCK_SOCK_HELP:
     yasock_print_help();
+    break;
   // one of option -s or -c is mandatory
   default:
     fprintf(stderr, "Don't known what to launch: client or server ?\n");
@@ -181,6 +184,18 @@ int		yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
 	sock_env->wr_buf_size = atoi(optarg);
       }
       break;
+      // RECVTIMEO
+    case 'x':
+      if (optarg) {
+	sock_env->recv_timeout = atoi(optarg);
+      }
+      break;
+      // SNDTIMEO
+    case 'y':
+      if (optarg) {
+	sock_env->snd_timeout = atoi(optarg);
+      }
+      break;
       // SO_LINGER socket option (see socket(7))
     case 'L':
       if (optarg) {
@@ -247,10 +262,10 @@ void		yasock_print_version(void) {
 
 void		yasock_print_help(void) {
   // Print Description
-  printf("yasock is a client/server program which aim to manipulate TCP/IP stack properties. yasock can operate as client or as server.\n");
+  printf("yasock is a client/server program which aim to manipulate TCP/IP socket properties. yasock can operate as client or as server.\n");
   printf("Server mode listens on port (defaults to %u) and waits for arbitrary data from client.\n", YASOCK_DEFAULT_PORT);
   printf("Client mode connects to the server program, sends arbitrary data to it and exits when done.\n");
-  printf("\nOptions below are used to modify the behavior of the TCP/IP stack.\n");
+  printf("\nOptions below are used to modify the behavior of the TCP/IP socket.\n");
   printf("\n");
   // Print usage for options
   yasock_print_usage();
@@ -267,6 +282,8 @@ void		yasock_print_usage(void) {
   printf(" -r n:  #bytes per read() for \"sink\" server (default %u)\n", YASOCK_DFT_READ_BUFSIZE);
   printf(" -v:    verbose\n");
   printf(" -w n:  #bytes per write() for \"source\" server (default %u)\n", YASOCK_DFT_WRITE_BUFSIZE);
+  printf(" -x n   #ms for SO_RCVTIMEO (receive timeout)\n");
+  printf(" -y n   #ms for SO_SNDTIMEO (send timeout)\n");
 #ifdef	HAVE_SO_LINGER_H
   printf(" -L n   SO_LINGER option, n = linger time (in seconds)\n");
 #endif	// HAVE_SO_LINGER_H
@@ -290,7 +307,7 @@ usage: sock [ options ] <host> <port>       (for client; default)
        sock [ options ] -i <host> <port>           (for "source" client)
        sock [ options ] -i -s [ <IPaddr> ] <port>  (for "sink" server)
        options: -b n  bind n as client's local port number
-         -c    convert newline to CR/LF & vice versa (Replaced by selection of congestion algorithm)
+         -c    convert newline to CR/LF & vice versa (Replaced by client mode)
          -f a.b.c.d.p  foreign IP address = a.b.c.d, foreign port# = p
          -g a.b.c.d  loose source route
          -h    issue TCP half close on standard input EOF
@@ -312,7 +329,7 @@ usage: sock [ options ] <host> <port>       (for client; default)
          -y n  #ms for SO_SNDTIMEO (send timeout)
          -A    SO_REUSEADDR option
          -B    SO_BROADCAST option
-         -C    set terminal to cbreak mode
+         -C    set terminal to cbreak mode (Replaced by selection of congestion control algorithm)
          -D    SO_DEBUG option
          -E    IP_RECVDSTADDR option
          -F    fork after connection accepted (TCP concurrent server)
