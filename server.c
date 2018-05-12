@@ -62,7 +62,7 @@ int			yasock_launch_server(sock_env_t *sock_env) {
   // We have a client connected
   // launch interactive or bulk transfer
   if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_INTERACTIVE_FLAG)) {
-    rc = yasock_srv_readwrite(new_con_sd, sock_env);
+    rc = yasock_interactive(new_con_sd, sock_env);
   } else {
     rc = yasock_srv_readonly(new_con_sd, sock_env);
   }
@@ -117,63 +117,3 @@ int			yasock_srv_readonly(int cli_sd,	sock_env_t *sock_env) {
   return rc;
 }
 
-/*
- *	For each read block, write it back to client
- *
- *
- */
-int			yasock_srv_readwrite(int cli_sd, sock_env_t *sock_env) {
-  int			rc = 0;
-  char			*data_buf = NULL;
-  ssize_t		size_read = 0;
-  ssize_t		size_write = 0;
-  
-  if (cli_sd < 0 || !sock_env) {
-    return -1;
-  }
-  // Set socket options
-  // Inheritance of setsockopt is not guaranteed
-  rc = yasock_set_socket_options(cli_sd, sock_env);
-  // Set buffer for read/write operation
-  if ((data_buf = malloc(sock_env->rd_buf_size)) == NULL) {
-    fprintf(stderr, "[yasock_srv_readwrite] Cannot malloc %u len data\n", sock_env->rd_buf_size);
-    close(cli_sd);
-    return -1;
-  }
-  while (1) {
-    // Reads data
-    size_read = recv(cli_sd, (void*)data_buf, sock_env->rd_buf_size, 0);
-    // EOF. Client has closed the socket
-    if (size_read == 0) {
-      if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
-	fprintf(stderr, "[yasock_srv_readwrite] Connection closed by peer\n");
-      }
-      break;
-    }
-    // Error while reading
-    if (size_read < 0) {
-      if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
-	perror("Error while reading data from client");
-      }
-      break;
-    }
-    if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
-      fprintf(stderr, "[yasock_srv_readwrite] Read %lu bytes\n", size_read);
-    }
-    // Write back what we just read
-    if ((size_write = send(cli_sd, (void*)data_buf, size_read, 0)) < 0) {
-      perror("[yasock_srv_readwrite] Error while writing to client");
-      rc = -1;
-      break;
-    }
-    if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
-      fprintf(stderr, "[yasock_srv_readwrite] Wrote %lu bytes\n", size_write);
-    }
-    // If enabled, sleep after each read
-    if (sock_env->rw_sleep) {
-      usleep(sock_env->rw_sleep);
-    }
-  }
-  free(data_buf);
-  return rc;
-}

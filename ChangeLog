@@ -4,16 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [0.2.1] - 2018-05-11
 	### Added
+	interactive transfer has been added and is the default. Use -i to change to bulk transfer
 
 	### Changed
-
+	Server and client modes use the same routine for interactive mode
 
 	### Removed
 
 
-## [0.2.0]
+## [0.2.0] - 2018-05-11
 	## Changed
 	Replaced write(2) calls with send(2)
 	Replaced read(2) calls with recv(2)

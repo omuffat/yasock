@@ -66,9 +66,9 @@ int			yasock_launch_client(sock_env_t *sock_env) {
   }
   // launch interactive or bulk transfer
   if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_INTERACTIVE_FLAG)) {
-    yasock_cli_interactive(sd, sock_env);
+    yasock_interactive(sd, sock_env);
   } else {
-    rc = yasock_cli_writeonly(sd, sock_env);
+    rc = yasock_writeonly(sd, sock_env);
   }
   if (sock_env->fin_sleep) {
     usleep(sock_env->fin_sleep);
@@ -85,7 +85,7 @@ int			yasock_launch_client(sock_env_t *sock_env) {
  *
  *
  */
-int		yasock_cli_writeonly(int sd, sock_env_t *sock_env) {
+int		yasock_writeonly(int sd, sock_env_t *sock_env) {
   int		rc = 0;
   char		*write_buf = NULL;
   ssize_t	wr_size = -1;
@@ -133,88 +133,6 @@ int		yasock_cli_writeonly(int sd, sock_env_t *sock_env) {
   if (write_buf) {
     free(write_buf);
   }
-  return 0;
-}
-
-/*
- *	Read data from stdin and send it to sd
- *	Read data from sd and send it to stdout
- *
- *	Until EOF is read on stdin
- *
- *
- */
-int		yasock_cli_interactive(int sd, sock_env_t *sock_env) {
-  int			rc = 0;
-  char			*data_buf = NULL;
-  ssize_t		size_read = 0;
-  ssize_t		size_write = 0;
-  
-  if (sd < 0 || !sock_env) {
-    return -1;
-  }
-  // Set buffer for read/write operation
-  if ((data_buf = malloc(sock_env->rd_buf_size)) == NULL) {
-    fprintf(stderr, "[yasock_srv_readwrite] Cannot malloc %u len data\n", sock_env->rd_buf_size);
-    return -1;
-  }
-  // Reads data
-  while (1) {
-    fprintf(stderr, "%s>> ", PACKAGE);
-    // Read stdin
-    size_read = read(STDIN, (void*)data_buf, sock_env->rd_buf_size);
-    if (size_read < 0) {
-      perror("Error while reading stdin");
-      break;
-    }
-    // EOF on STDIN
-    if (size_read == 0) {
-      // If requested, performs half close
-      if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_SHUTDOWN_FLAG)) {
-	shutdown(sd, SHUT_WR);
-	if (rc < 0) {
-	  perror("[yasock_cli_interactive] shutdown failed");
-	}
-	if (rc >= 0 && YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
-	  printf("[yasock_cli_interactive] half-closed connection");
-	}
-      }
-      fprintf(stderr, "\n");
-      // End of loop
-      break;
-    }
-    // We have data to send to server
-    if (size_read > 0) {
-      // Send to server what we've got
-      if ((size_write = send(sd, (void*)data_buf, size_read, 0)) < 0) {
-	perror("[yasock_cli_interactive] Error while writing to server");
-	rc = -1;
-	break;
-      }
-      data_buf[0] = '\0';
-      // Read back from server
-      size_read = recv(sd, (void*)data_buf, sock_env->rd_buf_size, 0);
-      // Recv Error
-      if (size_read < 0) {
-	perror("[yasock_cli_interactive] Error while reading from server");
-	break;
-      }
-      // EOF
-      if (size_read == 0) {
-	if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
-	  fprintf(stderr, "Connexion closed by peer\n");
-	}
-      break;
-      }
-      // Print on stdout what we've got
-      if (write(STDOUT, data_buf, size_read) < 0) {
-	perror("[yasock_cli_interactive] Error while writing ouput got from server");
-	break;
-      }
-    } // End of if size_read > 0
-  } // End of while(1)
-  // Clean allocated data
-  free(data_buf);
   return 0;
 }
 

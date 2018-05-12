@@ -108,7 +108,7 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(man1dir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_yasock_OBJECTS = main.$(OBJEXT) server.$(OBJEXT) client.$(OBJEXT) \
-	socket_opt.$(OBJEXT)
+	socket_opt.$(OBJEXT) io_interactive.$(OBJEXT)
 yasock_OBJECTS = $(am_yasock_OBJECTS)
 yasock_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -308,7 +308,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CFLAGS = $(WARNINGCFLAGS) $(am__append_1)
-yasock_SOURCES = main.c server.c client.c socket_opt.c yasock.h
+yasock_SOURCES = main.c server.c client.c socket_opt.c io_interactive.c yasock.h
 man1_MANS = yasock.man
 AM_CPPFLAGS = 
 all: config.h
@@ -418,6 +418,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/io_interactive.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/main.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/server.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/socket_opt.Po@am__quote@

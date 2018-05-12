@@ -133,16 +133,18 @@ void		yasock_print_version(void);
  *	server.c
  */
 int		yasock_launch_server(sock_env_t*);
-int		yasock_srv_readwrite(int, sock_env_t*);
 int		yasock_srv_readonly(int, sock_env_t*);
 
 /*
  *	client.c
  */
 int		yasock_launch_client(sock_env_t*);
-int		yasock_cli_writeonly(int, sock_env_t*);
-int		yasock_cli_interactive(int, sock_env_t*);
+int		yasock_writeonly(int, sock_env_t*);
 
+/*
+ *	io_interactive.c
+ */
+int		yasock_interactive(int, sock_env_t*);
 /*
  *	socket_opt.c
  */
