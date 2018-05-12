@@ -50,35 +50,39 @@ int			yasock_launch_client(sock_env_t *sock_env) {
       close(sd);
       return (-1);
     }
+    // verbose message to tell we have succeed to connect
     if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
       printf("Connected to %s:%u\n", sock_env->ip_addr, sock_env->port);
     }
-    //rc = yasock_cli_writeread_sendall_first(sd, sock_env);
-    //rc = yasock_cli_writeread(sd, sock_env);
-    rc = yasock_cli_writeonly(sd, sock_env);
     break;
   default:
     printf("Only AF_INET is handled so far\n");
     break;
   }
+  // Now we are connected to server
+  // Sleep before first write if set
+  if (sock_env->init_sleep) {
+    usleep(sock_env->init_sleep);
+  }
+  // launch interactive or bulk transfer
+  if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_INTERACTIVE_FLAG)) {
+    yasock_cli_interactive(sd, sock_env);
+  } else {
+    rc = yasock_cli_writeonly(sd, sock_env);
+  }
   if (sock_env->fin_sleep) {
     usleep(sock_env->fin_sleep);
   }
   // Close socket. Linger may be set
-  close(sd);
+  if (close(sd) < 0) {
+    perror("Close error");
+  }
   return rc;
 }
 
 /*
  *	Send only data.
  *
- *	Special care should be made about the close() syscall since we cannot guarantee
- *	all data has been sent.
- *	That's why a recv call is used to check server has read all data before. 
- *	It let to wait for server to close the connexion before closing the connexion.
- *	This is not used if SO_LINGER socket option is set
- *
- *	ALL SEND/RECV are blocking
  *
  */
 int		yasock_cli_writeonly(int sd, sock_env_t *sock_env) {
@@ -104,10 +108,6 @@ int		yasock_cli_writeonly(int sd, sock_env_t *sock_env) {
   for (i = 0; i < sock_env->wr_buf_size; i++) {
     write_buf[ i ] = YASOCK_DEFAULT_WR_CHAR;
   }
-  // Sleep before first write if set
-  if (sock_env->first_write_sleep) {
-    usleep(sock_env->first_write_sleep);
-  }
   // Send buffer as many time as wr_count
   for (i = 0; i < sock_env->wr_count; i++) {
     // Write one buffer into the wire
@@ -121,32 +121,13 @@ int		yasock_cli_writeonly(int sd, sock_env_t *sock_env) {
       printf("[yasock_cli_writeonly] #%u/%u Wrote %lu/%u bytes\n",
 	     i+1, sock_env->wr_count, wr_size, sock_env->wr_count * sock_env->wr_buf_size);
     }
-    // If enabled, sleep between each write
-    if (sock_env->write_sleep) {
-      usleep(sock_env->write_sleep);
+    // If enabled, sleep after each write
+    if (sock_env->rw_sleep) {
+      usleep(sock_env->rw_sleep);
     }
   } // End of for
   if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
     printf("[yasock_cli_writeonly] TOTAL: Wrote %lu bytes\n", total_wr);
-  }
-  // If requested, performs half close after all data has been sent
-  if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_SHUTDOWN_FLAG)) {
-    shutdown(sd, SHUT_WR);
-    if (rc < 0) {
-      perror("[yasock_cli_writeonly] shutdown failed");
-    }
-    if (rc >= 0 && YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
-      printf("[yasock_cli_writeonly] half-closed connection");
-    }
-  }
-  // Wait for sign that server has received all data.
-  // Here we make a recv syscall if SO_LINGER is not used
-  if (!sock_env->linger) {
-    // Linger option is not set, so make a blocking recv to wait for server to close its socket
-    // so far, we use write_buf for a recv call, should be improved ??
-    if ((rc = recv(sd, write_buf, wr_size, 0)) < 0) {
-      perror("[yasock_cli_writeonly] read failed");
-    }
   }
   // Clean buffer
   if (write_buf) {
@@ -156,203 +137,84 @@ int		yasock_cli_writeonly(int sd, sock_env_t *sock_env) {
 }
 
 /*
- *	Send one buffer then read this buffer back,
+ *	Read data from stdin and send it to sd
+ *	Read data from sd and send it to stdout
  *
- *	And so on until sock_env->wr_count has been sent/read
+ *	Until EOF is read on stdin
  *
- *	ALL SEND/RECV are blocking
  *
  */
-int		yasock_cli_writeread(int sd, sock_env_t *sock_env) {
-  char		*write_buf = NULL;
-  char		*rd_buf = NULL;
-  ssize_t	wr_size = -1;
-  ssize_t	rd_size = -1;
-  ssize_t	total_wr = 0;
-  ssize_t	total_rd = 0;
-  int		i = 0;
+int		yasock_cli_interactive(int sd, sock_env_t *sock_env) {
+  int			rc = 0;
+  char			*data_buf = NULL;
+  ssize_t		size_read = 0;
+  ssize_t		size_write = 0;
   
   if (sd < 0 || !sock_env) {
-    printf("[yasock_cli_writeread] invalid parameter(s)\n");
     return -1;
   }
-  // Prepare write buffer
-  if (sock_env->wr_buf_size) {
-    write_buf = malloc(sock_env->wr_buf_size * sizeof(char));
-  }
-  if (write_buf == NULL) {
-    printf("Could not malloc %u bytes for write buffer\n", sock_env->wr_buf_size);
+  // Set buffer for read/write operation
+  if ((data_buf = malloc(sock_env->rd_buf_size)) == NULL) {
+    fprintf(stderr, "[yasock_srv_readwrite] Cannot malloc %u len data\n", sock_env->rd_buf_size);
     return -1;
   }
-  // Prepare read buffer
-  if (sock_env->rd_buf_size) {
-    rd_buf = malloc(sock_env->rd_buf_size * sizeof(char));
-  }
-  if (rd_buf == NULL) {
-    printf("Could not malloc %u bytes for read buffer\n", sock_env->wr_buf_size);
-    free(write_buf);
-    return -1;
-  }
-  // set data in write buffer
-  for (i = 0; i < sock_env->wr_buf_size; i++) {
-    write_buf[ i ] = YASOCK_DEFAULT_WR_CHAR;
-  }
-  // Sleep before first write if set
-  if (sock_env->first_write_sleep) {
-    usleep(sock_env->first_write_sleep);
-  }
-  // Send buffer as many time as wr_count
-  for (i = 0; i < sock_env->wr_count; i++) {
-    // Write one buffer into the wire
-    if ((wr_size = send(sd, write_buf, sock_env->wr_buf_size, 0)) < 0) {
-      perror("[yasock_cli_writeread] cannot write data to host");
+  // Reads data
+  while (1) {
+    fprintf(stderr, "%s>> ", PACKAGE);
+    // Read stdin
+    size_read = read(STDIN, (void*)data_buf, sock_env->rd_buf_size);
+    if (size_read < 0) {
+      perror("Error while reading stdin");
       break;
     }
-    // Update total write counter
-    total_wr += wr_size;
-    if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
-      printf("[yasock_cli_writeread] #%u/%u Wrote %lu (%lu/%u bytes)\n",
-	     i+1, sock_env->wr_count, wr_size, total_wr, sock_env->wr_count * sock_env->wr_buf_size);
-    }
-    // Read one buffer from the wire
-    rd_size = recv(sd, rd_buf, sock_env->rd_buf_size, 0);
-    if (rd_size < 0) {
-      perror("[yasock_cli_writeread] Cannot make a read");
+    // EOF on STDIN
+    if (size_read == 0) {
+      // If requested, performs half close
+      if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_SHUTDOWN_FLAG)) {
+	shutdown(sd, SHUT_WR);
+	if (rc < 0) {
+	  perror("[yasock_cli_interactive] shutdown failed");
+	}
+	if (rc >= 0 && YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
+	  printf("[yasock_cli_interactive] half-closed connection");
+	}
+      }
+      fprintf(stderr, "\n");
+      // End of loop
       break;
     }
-    total_rd += rd_size;
-    if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
-      printf("[yasock_cli_writeread] Read %lu bytes\n", rd_size);
-    }
-    // If enabled, sleep between each write
-    if (sock_env->write_sleep) {
-      usleep(sock_env->write_sleep);
-    }
-  }
-  // only if no error before
-  if (i >= sock_env->wr_count) {
-    // Peer may have not sent all data in our previous read
-    while (total_rd < total_wr) {
-      rd_size = recv(sd, rd_buf, sock_env->rd_buf_size, 0);
-      if (rd_size < 0) {
-	perror("[yasock_cli_writeread] Cannot make a read");
+    // We have data to send to server
+    if (size_read > 0) {
+      // Send to server what we've got
+      if ((size_write = send(sd, (void*)data_buf, size_read, 0)) < 0) {
+	perror("[yasock_cli_interactive] Error while writing to server");
+	rc = -1;
 	break;
       }
-      total_rd += rd_size;
-      if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
-	printf("[yasock_cli_writeread] Read %lu bytes\n", rd_size);
+      data_buf[0] = '\0';
+      // Read back from server
+      size_read = recv(sd, (void*)data_buf, sock_env->rd_buf_size, 0);
+      // Recv Error
+      if (size_read < 0) {
+	perror("[yasock_cli_interactive] Error while reading from server");
+	break;
       }
-    }
-  }
-  // Clean buffers
-  if (write_buf) {
-    free(write_buf);
-  }
-  if (rd_buf) {
-    free(rd_buf);
-  }
+      // EOF
+      if (size_read == 0) {
+	if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
+	  fprintf(stderr, "Connexion closed by peer\n");
+	}
+      break;
+      }
+      // Print on stdout what we've got
+      if (write(STDOUT, data_buf, size_read) < 0) {
+	perror("[yasock_cli_interactive] Error while writing ouput got from server");
+	break;
+      }
+    } // End of if size_read > 0
+  } // End of while(1)
+  // Clean allocated data
+  free(data_buf);
   return 0;
 }
 
-
-/*
- *	Send all data first, then read data back from server
- *
- *	Bad behavior regarding to server implementation (server:for each server read(2), write(2) it)
- *	If (client datalen to send) > (server SO_SNDBUF buffer) ??
- *	==> We have zero window on both side
- *	==> Client won't accept any packet when server will have sent client recvbuf size
- *	==> Server write will be pending and can't do read
- *
- *	ALL SEND/RECV are blocking
- *
- */
-int		yasock_cli_writeread_sendall_first(int sd, sock_env_t *sock_env) {
-  int		rc = 0;
-  char		*write_buf = NULL;
-  char		*rd_buf = NULL;
-  ssize_t	wr_size = -1;
-  ssize_t	rd_size = -1;
-  ssize_t	total_wr = 0;
-  int		i = 0;
-  
-  if (sd < 0 || !sock_env) {
-    printf("[yasock_cli_writeread] invalid parameter(s)\n");
-    return -1;
-  }
-  // Prepare write buffer
-  if (sock_env->wr_buf_size) {
-    write_buf = malloc(sock_env->wr_buf_size * sizeof(char));
-  }
-  if (write_buf == NULL) {
-    printf("Could not malloc %u bytes for write buffer\n", sock_env->wr_buf_size);
-    return -1;
-  }
-  // Prepare read buffer
-  if (sock_env->rd_buf_size) {
-    rd_buf = malloc(sock_env->rd_buf_size * sizeof(char));
-  }
-  if (rd_buf == NULL) {
-    printf("Could not malloc %u bytes for read buffer\n", sock_env->wr_buf_size);
-    free(write_buf);
-    return -1;
-  }
-  // Prepare send buffer
-  for (i = 0; i < sock_env->wr_buf_size; i++) {
-    write_buf[ i ] = YASOCK_DEFAULT_WR_CHAR;
-  }
-  // Sleep before first write if set
-  if (sock_env->first_write_sleep) {
-    usleep(sock_env->first_write_sleep);
-  }
-  // Send buffer as many time as wr_count
-  for (i = 0; i < sock_env->wr_count; i++) {
-    // Write one buffer into the wire
-    if ((wr_size = send(sd, write_buf, sock_env->wr_buf_size, 0)) < 0) {
-      perror("[yasock_cli_writeread] cannot write data to host");
-      break;
-    }
-    total_wr += wr_size;
-    if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
-      printf("[yasock_cli_writeread_sendall_first] #%u/%u Wrote %lu/%u bytes\n",
-	     i+1, sock_env->wr_count, wr_size, sock_env->wr_count * sock_env->wr_buf_size);
-    }
-    // If enabled, sleep between each write
-    if (sock_env->write_sleep) {
-      usleep(sock_env->write_sleep);
-    }
-  }
-  if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
-    printf("[yasock_cli_writeread_sendall_first] TOTAL: Wrote %lu bytes\n", total_wr);
-  }
-  // If requested, performs half close after all data has been sent
-  if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_SHUTDOWN_FLAG)) {
-    rc = shutdown(sd, SHUT_WR);
-    if (rc < 0) {
-      perror("[yasock_cli_writeread_sendall_first] shutdown failed");
-    }
-    if (rc >= 0 && YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
-      printf("[yasock_cli_writeread_sendall_first] half-closed connection");
-    }
-  }
-  // Read one buffer from the wire as long as they are data
-  while (total_wr > 0) {
-    rd_size = recv(sd, rd_buf, sock_env->rd_buf_size, 0);
-    if (rd_size < 0) {
-      perror("[yasock_cli_writeread_sendall_first] Cannot make a read");
-      break;
-    }
-    total_wr -= rd_size;
-    if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
-      printf("[yasock_cli_writeread_sendall_first] Read %lu bytes\n", rd_size);
-    }
-  }
-  // Clean buffers
-  if (write_buf) {
-    free(write_buf);
-  }
-  if (rd_buf) {
-    free(rd_buf);
-  }
-  return 0;
-}

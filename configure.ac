@@ -40,13 +40,23 @@ AC_CONFIG_HEADERS([config.h])
 
 
 ## Checks for header files
-dnl AC_CHECK_HEADERS([sys/types.h])
+AC_CHECK_HEADERS([sys/types.h], AC_DEFINE([HAVE_SYS_TYPES_H], 1,
+				[Define to 1 if you have the <sys/types.h> header file. MY MSG]))
 AC_CHECK_HEADERS([sys/socket.h], AC_DEFINE([HAVE_SYS_SOCKET_H], 1,
 				 [Define to 1 if you have the <sys/socket.h> header file. MY MSG]))
 AC_CHECK_HEADERS([netinet/in.h], AC_DEFINE([HAVE_NETINET_IN_H], 1,
 				 [Define to 1 if you have the <netinet/in.h> header file. MY MSG]))
 AC_CHECK_HEADERS([netinet/ip.h], AC_DEFINE([HAVE_NETINET_IP_H], 1,
-				 [Define to 1 if you have the <netinet/ip.h> header file. My MSG]))
+				 [Define to 1 if you have the <netinet/ip.h> header file. My MSG]),
+		[],
+		[[#ifdef HAVE_SYS_TYPES_H
+	      	 # include <sys/types.h>
+		 #endif
+		 #ifdef HAVE_NETINET_IN_H
+	      	 # include <netinet/in.h>
+		 #endif
+		 ]]
+		 )
 
 ## Checks for types
 

@@ -10,6 +10,7 @@
 static	struct option	tab_options[] = {
   { "client",			no_argument,		0,	'c' },
   { YASOCK_SHUTDOWN_OPT,	no_argument,		0,	'h' },
+  { YASOCK_INTERACTIVE_OPT,	no_argument,		0,	'i' },
   { "write-count",		required_argument,	0,	'n' },
   { "sleep-rw",			required_argument,	0,	'p' },
   { "read-buffer",		required_argument,	0,	'r' },
@@ -34,7 +35,7 @@ static	struct option	tab_options[] = {
 int		main(int argc, char **argv) {
   int		rc = 0;
   sock_env_t	*sock_env = NULL;
-
+  
 #ifdef	YASOCK_DEBUG
   fprintf(stderr, "Warning: %s is in debug mode\n", PACKAGE);
 #endif	// YASOCK_DEBUG
@@ -62,7 +63,7 @@ int		main(int argc, char **argv) {
   case YASOCK_SOCK_HELP:
     yasock_print_help();
     break;
-  // one of option -s or -c is mandatory
+    // one of option -s or -c is mandatory
   default:
     fprintf(stderr, "Don't known what to launch: client or server ?\n");
     rc = -1;
@@ -77,7 +78,7 @@ int		main(int argc, char **argv) {
 
 int		yasock_init_env(sock_env_t **sock_env) {
   int		rc = 0;
-
+  
   if (!sock_env) {
     fprintf(stderr, "Cannot initialize a null structure pointer\n");
     return -1;
@@ -95,6 +96,8 @@ int		yasock_init_env(sock_env_t **sock_env) {
   (*sock_env)->wr_count = YASOCK_DEFAULT_WR_COUNT;
   (*sock_env)->ttl = YASOCK_DEFAULT_TTL;
   (*sock_env)->tos = YASOCK_DEFAULT_TOS;
+  // Defaults to interactive
+  YASOCK_SET_FLAG((*sock_env)->opt_flags, YASOCK_INTERACTIVE_FLAG);
   return rc;
 }
 int		yasock_clean_env(sock_env_t **sock_env) {
@@ -152,16 +155,20 @@ int		yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
     case 'h':
       YASOCK_SET_FLAG(sock_env->opt_flags, YASOCK_SHUTDOWN_FLAG);
       break;
+      // source client/sink server ==> bulk transfer. Disable default interactive transfer
+    case 'i':
+      YASOCK_CLEAR_FLAG(sock_env->opt_flags, YASOCK_INTERACTIVE_FLAG);
+      break;
       // Write Count
     case 'n':
       if (optarg) {
 	sock_env->wr_count = atoi(optarg);
       }
       break;
-      // #ms to pause between each read/write
+      // #ms to pause after each read/write
     case 'p':
       if (optarg) {
-	sock_env->read_sleep = sock_env->write_sleep = atoi(optarg) * 1000;
+	sock_env->rw_sleep = atoi(optarg) * 1000;
       }
       break;
       // Read buffer
@@ -215,7 +222,7 @@ int		yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
       // #ms to pause before first read/write
     case 'P':
       if (optarg) {
-	sock_env->first_read_sleep = sock_env->first_write_sleep = atoi(optarg) * 1000;
+	sock_env->init_sleep = atoi(optarg) * 1000;
       }
       break;
       // #ms to pause before close
@@ -277,6 +284,7 @@ void		yasock_print_usage(void) {
   printf(" --help: Prints program description and exits\n");
   printf(" --version: Prints version of program and exits\n");
   printf(" -h:    half closes TCP connexion after sending data\n");
+  printf(" -i     \"source\" data to socket, \"sink\" data from socket (w/-s)\n");
   printf(" -n n:  #buffers to write for \"source\" client (default %u)\n", YASOCK_DEFAULT_WR_COUNT);
   printf(" -p n:  #ms to pause between each read or write (source/sink)\n");
   printf(" -r n:  #bytes per read() for \"sink\" server (default %u)\n", YASOCK_DFT_READ_BUFSIZE);
@@ -302,56 +310,56 @@ void		yasock_print_usage(void) {
 
 
 /**
-usage: sock [ options ] <host> <port>       (for client; default)
-       sock [ options ] -s [ <IPaddr> ] <port>     (for server)
-       sock [ options ] -i <host> <port>           (for "source" client)
-       sock [ options ] -i -s [ <IPaddr> ] <port>  (for "sink" server)
-       options: -b n  bind n as client's local port number
-         -c    convert newline to CR/LF & vice versa (Replaced by client mode)
-         -f a.b.c.d.p  foreign IP address = a.b.c.d, foreign port# = p
-         -g a.b.c.d  loose source route
-         -h    issue TCP half close on standard input EOF
-         -i    "source" data to socket, "sink" data from socket (w/-s)
-         -j a.b.c.d  join multicast group
-         -k    write or writev in chunks
-         -l a.b.c.d.p  client's local IP address = a.b.c.d, local port# = p
-         -n n  #buffers to write for "source" client (default 1024)
-         -o    do NOT connect UDP client
-         -p n  #ms to pause before each read or write (source/sink)
-         -q n  size of listen queue for TCP server (default 5)
-         -r n  #bytes per read() for "sink" server (default 1024)
-         -s    operate as server instead of client
-         -t n  set multicast ttl
-         -u    use UDP instead of TCP
-         -v    verbose
-         -w n  #bytes per write() for "source" client (default 1024)
-         -x n  #ms for SO_RCVTIMEO (receive timeout)
-         -y n  #ms for SO_SNDTIMEO (send timeout)
-         -A    SO_REUSEADDR option
-         -B    SO_BROADCAST option
-         -C    set terminal to cbreak mode (Replaced by selection of congestion control algorithm)
-         -D    SO_DEBUG option
-         -E    IP_RECVDSTADDR option
-         -F    fork after connection accepted (TCP concurrent server)
-         -G a.b.c.d  strict source route
-         -H n  IP_TOS option (16=min del, 8=max thru, 4=max rel, 2=min$)
-         -I    SIGIO signal
-         -J n  IP_TTL option
-         -K    SO_KEEPALIVE option
-         -L n  SO_LINGER option, n = linger time (in seconds)
-         -N    TCP_NODELAY option
-         -O n  #ms to pause after listen, but before first accept
-         -P n  #ms to pause before first read or write (source/sink)
-         -Q n  #ms to pause after receiving FIN, but before close
-         -R n  SO_RCVBUF option
-         -S n  SO_SNDBUF option
-         -T    SO_REUSEPORT option
-         -U n  enter urgent mode before write number n (source only)
-         -V    use writev() instead of write(); enables -k too
-         -W    ignore write errors for sink client
-         -X n  TCP_MAXSEG option (set MSS)
-         -Y    SO_DONTROUTE option
-         -Z    MSG_PEEK
+   usage: sock [ options ] <host> <port>       (for client; default)
+   sock [ options ] -s [ <IPaddr> ] <port>     (for server)
+   sock [ options ] -i <host> <port>           (for "source" client)
+   sock [ options ] -i -s [ <IPaddr> ] <port>  (for "sink" server)
+   options: -b n  bind n as client's local port number
+   -c    convert newline to CR/LF & vice versa (Replaced by client mode)
+   -f a.b.c.d.p  foreign IP address = a.b.c.d, foreign port# = p
+   -g a.b.c.d  loose source route
+   -h    issue TCP half close on standard input EOF
+   -i    "source" data to socket, "sink" data from socket (w/-s)
+   -j a.b.c.d  join multicast group
+   -k    write or writev in chunks
+   -l a.b.c.d.p  client's local IP address = a.b.c.d, local port# = p
+   -n n  #buffers to write for "source" client (default 1024)
+   -o    do NOT connect UDP client
+   -p n  #ms to pause before each read or write (source/sink)
+   -q n  size of listen queue for TCP server (default 5)
+   -r n  #bytes per read() for "sink" server (default 1024)
+   -s    operate as server instead of client
+   -t n  set multicast ttl
+   -u    use UDP instead of TCP
+   -v    verbose
+   -w n  #bytes per write() for "source" client (default 1024)
+   -x n  #ms for SO_RCVTIMEO (receive timeout)
+   -y n  #ms for SO_SNDTIMEO (send timeout)
+   -A    SO_REUSEADDR option
+   -B    SO_BROADCAST option
+   -C    set terminal to cbreak mode (Replaced by selection of congestion control algorithm)
+   -D    SO_DEBUG option
+   -E    IP_RECVDSTADDR option
+   -F    fork after connection accepted (TCP concurrent server)
+   -G a.b.c.d  strict source route
+   -H n  IP_TOS option (16=min del, 8=max thru, 4=max rel, 2=min$)
+   -I    SIGIO signal
+   -J n  IP_TTL option
+   -K    SO_KEEPALIVE option
+   -L n  SO_LINGER option, n = linger time (in seconds)
+   -N    TCP_NODELAY option
+   -O n  #ms to pause after listen, but before first accept
+   -P n  #ms to pause before first read or write (source/sink)
+   -Q n  #ms to pause after receiving FIN, but before close
+   -R n  SO_RCVBUF option
+   -S n  SO_SNDBUF option
+   -T    SO_REUSEPORT option
+   -U n  enter urgent mode before write number n (source only)
+   -V    use writev() instead of write(); enables -k too
+   -W    ignore write errors for sink client
+   -X n  TCP_MAXSEG option (set MSS)
+   -Y    SO_DONTROUTE option
+   -Z    MSG_PEEK
 	 
 
- **/
+**/

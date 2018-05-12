@@ -52,13 +52,31 @@ int			yasock_launch_server(sock_env_t *sock_env) {
   if ((new_con_sd = accept(sd, (struct sockaddr*)&new_con, &new_con_len)) < -1) {
     perror("Cannot accept a new connection");
   }
+  // Verbose message for accepting a new connexion
   inet_ntop(sock_env->af_family, (const void*)&(new_con.sin_addr), ip_buf_size, YASOCK_DFT_IP_BUFSIZE);
   printf("Accepting connection from %s:%u\n", ip_buf_size, ntohs(new_con.sin_port));
-  // Call read/write data procedure
-  //rc = yasock_srv_readwrite(new_con_sd, (const struct sockaddr*)&new_con, sock_env);
-  rc = yasock_srv_readonly(new_con_sd, (const struct sockaddr*)&new_con, sock_env);
+  // performs sleep after accept
+  if (sock_env->init_sleep > 0) {
+    usleep(sock_env->init_sleep);
+  }
+  // We have a client connected
+  // launch interactive or bulk transfer
+  if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_INTERACTIVE_FLAG)) {
+    rc = yasock_srv_readwrite(new_con_sd, sock_env);
+  } else {
+    rc = yasock_srv_readonly(new_con_sd, sock_env);
+  }
+  // Close client socket
+  if (sock_env->fin_sleep) {
+    usleep(sock_env->fin_sleep);
+  }
+  if (close(new_con_sd) < 0) {
+    perror("Error while closing client socket");
+  }
   // Close listening socket
-  close(sd);
+  if (close(sd) < 0) {
+    perror("Error while closing server socket");
+  }
   return rc;
 }
 
@@ -66,16 +84,14 @@ int			yasock_launch_server(sock_env_t *sock_env) {
  *	Read only data
  *	No write back
  *
- *	Closes the client socket cli_sd at the end of this routine
  *
  */
-int			yasock_srv_readonly(int cli_sd, const struct sockaddr *in_addr,
-					sock_env_t *sock_env) {
+int			yasock_srv_readonly(int cli_sd,	sock_env_t *sock_env) {
   int			rc = 0;
   char			*data_buf = NULL;
   ssize_t		size_read = 0;
   
-  if (cli_sd < 0 || !in_addr || !sock_env) {
+  if (cli_sd < 0 || !sock_env) {
     return -1;
   }
   // Set socket options
@@ -87,26 +103,17 @@ int			yasock_srv_readonly(int cli_sd, const struct sockaddr *in_addr,
     close(cli_sd);
     return -1;
   }
-  // performs sleep before first read
-  if (sock_env->first_read_sleep > 0) {
-    usleep(sock_env->first_read_sleep);
-  }
   // Reads data
   while ((size_read = recv(cli_sd, (void*)data_buf, sock_env->rd_buf_size, 0)) > 0) {
     if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
       printf("[yasock_srv_readwrite] Read %lu bytes\n", size_read);
     }
     // If enabled, sleep between each read
-    if (sock_env->read_sleep) {
-      usleep(sock_env->read_sleep);
+    if (sock_env->rw_sleep) {
+      usleep(sock_env->rw_sleep);
     }
   }
   free(data_buf);
-  // Close socket
-  if (sock_env->fin_sleep) {
-    usleep(sock_env->fin_sleep);
-  }
-  close(cli_sd);
   return rc;
 }
 
@@ -114,17 +121,14 @@ int			yasock_srv_readonly(int cli_sd, const struct sockaddr *in_addr,
  *	For each read block, write it back to client
  *
  *
- *	Closes the client socket cli_sd at the end of this routine
- *
  */
-int			yasock_srv_readwrite(int cli_sd, const struct sockaddr *in_addr,
-					 sock_env_t *sock_env) {
+int			yasock_srv_readwrite(int cli_sd, sock_env_t *sock_env) {
   int			rc = 0;
   char			*data_buf = NULL;
   ssize_t		size_read = 0;
   ssize_t		size_write = 0;
   
-  if (cli_sd < 0 || !in_addr || !sock_env) {
+  if (cli_sd < 0 || !sock_env) {
     return -1;
   }
   // Set socket options
@@ -132,18 +136,29 @@ int			yasock_srv_readwrite(int cli_sd, const struct sockaddr *in_addr,
   rc = yasock_set_socket_options(cli_sd, sock_env);
   // Set buffer for read/write operation
   if ((data_buf = malloc(sock_env->rd_buf_size)) == NULL) {
-    printf("[yasock_srv_readwrite] Cannot malloc %u len data\n", sock_env->rd_buf_size);
+    fprintf(stderr, "[yasock_srv_readwrite] Cannot malloc %u len data\n", sock_env->rd_buf_size);
     close(cli_sd);
     return -1;
   }
-  // Performs a sleep before first read
-  if (sock_env->first_read_sleep > 0) {
-    usleep(sock_env->first_read_sleep);
-  }
-  // Reads data
-  while ((size_read = recv(cli_sd, (void*)data_buf, sock_env->rd_buf_size, 0)) > 0) {
+  while (1) {
+    // Reads data
+    size_read = recv(cli_sd, (void*)data_buf, sock_env->rd_buf_size, 0);
+    // EOF. Client has closed the socket
+    if (size_read == 0) {
+      if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
+	fprintf(stderr, "[yasock_srv_readwrite] Connection closed by peer\n");
+      }
+      break;
+    }
+    // Error while reading
+    if (size_read < 0) {
+      if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
+	perror("Error while reading data from client");
+      }
+      break;
+    }
     if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
-      printf("[yasock_srv_readwrite] Read %lu bytes\n", size_read);
+      fprintf(stderr, "[yasock_srv_readwrite] Read %lu bytes\n", size_read);
     }
     // Write back what we just read
     if ((size_write = send(cli_sd, (void*)data_buf, size_read, 0)) < 0) {
@@ -152,18 +167,13 @@ int			yasock_srv_readwrite(int cli_sd, const struct sockaddr *in_addr,
       break;
     }
     if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
-      printf("[yasock_srv_readwrite] Wrote %lu bytes\n", size_write);
+      fprintf(stderr, "[yasock_srv_readwrite] Wrote %lu bytes\n", size_write);
     }
-    // If enabled, sleep between each read
-    if (sock_env->read_sleep) {
-      usleep(sock_env->read_sleep);
+    // If enabled, sleep after each read
+    if (sock_env->rw_sleep) {
+      usleep(sock_env->rw_sleep);
     }
   }
   free(data_buf);
-  // Close socket
-  if (sock_env->fin_sleep) {
-    usleep(sock_env->fin_sleep);
-  }
-  close(cli_sd);
   return rc;
 }

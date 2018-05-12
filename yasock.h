@@ -27,15 +27,26 @@
 #define	MAX(x,y)	(((x) > (y)) ? (x) : (y))
 #endif	// MIN
 
+#ifndef	STDIN
+#define	STDIN				(0)
+#endif	// STDIN
+#ifndef	STDOUT
+#define	STDOUT				(1)
+#endif	// STDOUT
+#ifndef	STDERR
+#define	STDERR				(2)
+#endif	// STDERR
+
 // Options related
-#define	YASOCK_OPTSTRING		"c:hn:p:r:svw:x:y:L:NO:P:Q:R:S:X:"
+#define	YASOCK_OPTSTRING		"c:hin:p:r:svw:x:y:L:NO:P:Q:R:S:X:"
 // version string for comparison in yasock_parse_options
+#define	YASOCK_INTERACTIVE_OPT		"interactive"
 #define	YASOCK_VERSION_OPT		"version"
 #define	YASOCK_HELP_OPT			"help"
 #define	YASOCK_SHUTDOWN_OPT		"shutdown"
 #define	YASOCK_LINGER_OPT		"linger"
-#define	YASOCK_RCVTIMEO_OPT		"rtimeout" // x
-#define	YASOCK_SNDTIMEO_OPT		"stimeout" // y
+#define	YASOCK_RCVTIMEO_OPT		"rtimeout"
+#define	YASOCK_SNDTIMEO_OPT		"stimeout"
 
 // yasock Mode of processing
 #define	YASOCK_SOCK_UNKNOWN		0x00
@@ -70,6 +81,7 @@
 #define	YASOCK_VERBOSE_FLAG		0x0001
 #define	YASOCK_NODELAY_FLAG		0x0002
 #define	YASOCK_SHUTDOWN_FLAG		0x0004
+#define	YASOCK_INTERACTIVE_FLAG		0x0008
 // OPTION FLAGS MACROs
 #define	YASOCK_SET_FLAG(set, flag)	((set) |= (flag))
 #define	YASOCK_ISSET_FLAG(set, flag)	(((set) & (flag)) == (flag))
@@ -83,9 +95,8 @@ typedef	struct		sock_env_s {
   // Sleep part (in microseconds)
   unsigned int		listen_sleep;	// Sleep before accept(2) (for server only)
   unsigned int		first_read_sleep;	// Sleep before first read(2)
-  unsigned int		first_write_sleep;	// Sleep before first write(2)
-  unsigned int		read_sleep;	// Sleep between read(2)
-  unsigned int		write_sleep;	// Sleep between write(2)
+  unsigned int		init_sleep;	// Sleep after connect or accept
+  unsigned int		rw_sleep;	// Sleep after read(2)/write(2)
   unsigned int		fin_sleep;	// Sleep before close(2)
   // IP Socket option
   unsigned int		ttl;
@@ -122,16 +133,15 @@ void		yasock_print_version(void);
  *	server.c
  */
 int		yasock_launch_server(sock_env_t*);
-int		yasock_srv_readwrite(int, const struct sockaddr*, sock_env_t*);
-int		yasock_srv_readonly(int, const struct sockaddr*, sock_env_t*);
+int		yasock_srv_readwrite(int, sock_env_t*);
+int		yasock_srv_readonly(int, sock_env_t*);
 
 /*
  *	client.c
  */
 int		yasock_launch_client(sock_env_t*);
-int		yasock_cli_writeread(int, sock_env_t*);
-int		yasock_cli_writeread_sendall_first(int, sock_env_t*);
 int		yasock_cli_writeonly(int, sock_env_t*);
+int		yasock_cli_interactive(int, sock_env_t*);
 
 /*
  *	socket_opt.c
