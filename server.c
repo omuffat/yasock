@@ -4,47 +4,26 @@
 int			yasock_launch_server(sock_env_t *sock_env) {
   int			rc = 0;
   int			sd = -1;
-  struct sockaddr_in	in;
-  char			ip_buf_size[ YASOCK_DFT_IP_BUFSIZE + 1 ];
   int			new_con_sd = -1;
   struct sockaddr_in	new_con;
   socklen_t		new_con_len = 0;
+  char			ip_buf[ YASOCK_DFT_IP_BUFSIZE ];
 
   if (!sock_env) {
+#ifdef	YASOCK_DEBUG
+    fprintf(stderr, "[yasock_launch_server] Invalid parameters\n");
+#endif	// YASOCK_DEBUG
     return -1;
   }
   // Create Socket
+  // TODO:  handle UDP Stream mode
   if ((sd = socket(sock_env->af_family, SOCK_STREAM, 0)) < 0) {
     perror("Could not create a socket");
     return -1;
   }
-  // Prepare sockaddr_in structure for bind
-  in.sin_family = sock_env->af_family;
-  in.sin_port = htons(sock_env->port);
-  in.sin_addr.s_addr = htonl(INADDR_ANY);
-  // Make bind for our listening socket
-  if (bind(sd, (const struct sockaddr*)&in, sizeof(struct sockaddr_in)) < 0) {
-    perror("Could not bind socket");
-    return -1;
-  }
-  // Set socket options
-  rc = yasock_set_socket_options(sd, sock_env);
-  // Prepare our socket for listening
-  if (listen(sd, sock_env->backlog) < 0) {
-    perror("Could not listen on socket");
-    return -1;
-  }
-  // Display a informational message. But we need first a human printable ip address
-  // inet_ntoa is deprecated (and does not support IPv6)
-  if (inet_ntop(sock_env->af_family, (const void*)&(in.sin_addr),
-		ip_buf_size, YASOCK_DFT_IP_BUFSIZE) == NULL) {
-    perror("warning inet_ntop");
-  } else {
-    printf("Listening new connections on %s:%u\n", ip_buf_size, sock_env->port);
-  }
-  // Sleep before accepting new connection if set
-  if (sock_env->listen_sleep > 0) {
-    usleep(sock_env->listen_sleep);
+  // Set up socket for listening
+  if ((rc = yasock_do_listen(sd, sock_env)) < 0) {
+    return rc;
   }
   // Wait on a new connection. For now, handle only one connection
   // Need to use select(2) to handle several connections. And make socket NON BLOCKING
@@ -53,8 +32,8 @@ int			yasock_launch_server(sock_env_t *sock_env) {
     perror("Cannot accept a new connection");
   }
   // Verbose message for accepting a new connexion
-  inet_ntop(sock_env->af_family, (const void*)&(new_con.sin_addr), ip_buf_size, YASOCK_DFT_IP_BUFSIZE);
-  printf("Accepting connection from %s:%u\n", ip_buf_size, ntohs(new_con.sin_port));
+  inet_ntop(sock_env->af_family, (const void*)&(new_con.sin_addr), ip_buf, YASOCK_DFT_IP_BUFSIZE);
+  printf("Accepting connection from %s:%u\n", ip_buf, ntohs(new_con.sin_port));
   // performs sleep after accept
   if (sock_env->init_sleep > 0) {
     usleep(sock_env->init_sleep);
@@ -92,6 +71,9 @@ int			yasock_srv_readonly(int cli_sd,	sock_env_t *sock_env) {
   ssize_t		size_read = 0;
   
   if (cli_sd < 0 || !sock_env) {
+#ifdef	YASOCK_DEBUG
+    fprintf(stderr, "[yasock_srv_readonly] Invalid parameters\n");
+#endif	// YASOCK_DEBUG
     return -1;
   }
   // Set socket options
@@ -117,3 +99,64 @@ int			yasock_srv_readonly(int cli_sd,	sock_env_t *sock_env) {
   return rc;
 }
 
+/*
+ *	Set up listening socket sd:
+ *	--> call bind(2) on INADDR_ANY and port given in sock_env
+ *	--> set socket options
+ *	--> call listen(2)
+ *	--> call usleep(2) after listen call if requested
+ *
+ */
+int			yasock_do_listen(int sd, sock_env_t *sock_env) {
+  int			rc = 0;
+  struct sockaddr_in	in;
+  int			in_len = 0;
+  char			ip_buf[ YASOCK_DFT_IP_BUFSIZE + 1 ];
+
+  if (sd < 0 || !sock_env) {
+#ifdef	YASOCK_DEBUG
+    fprintf(stderr, "[yasock_do_listen] Invalid parameters\n");
+#endif	// YASOCK_DEBUG
+    return -1;
+  }
+  switch (sock_env->af_family) {
+  case AF_INET:
+    // Prepare sockaddr_in structure for bind
+    in.sin_family = sock_env->af_family;
+    in.sin_port = htons(sock_env->port);
+    in.sin_addr.s_addr = htonl(INADDR_ANY);
+    in_len = sizeof(struct sockaddr_in);
+    if (inet_ntop(sock_env->af_family, (const void*)&(in.sin_addr),
+		ip_buf, YASOCK_DFT_IP_BUFSIZE) == NULL) {
+      perror("warning inet_ntop");
+      ip_buf[0] = '\0';
+    }
+    break;
+  case AF_INET6:
+  default:
+    printf("Only AF_INET is handled so far\n");
+    break;
+  }
+  // Make bind for our listening socket
+  if (bind(sd, (const struct sockaddr*)&in, in_len) < 0) {
+    perror("Could not bind socket");
+    return -1;
+  }
+  // Set socket options
+  rc = yasock_set_socket_options(sd, sock_env);
+  // Prepare our socket for listening
+  if (listen(sd, sock_env->backlog) < 0) {
+    perror("Could not listen on socket");
+    return -1;
+  }
+  // Display a informational message. But we need first a human printable ip address
+  // inet_ntoa is deprecated (and does not support IPv6)
+  if (ip_buf[0]) {
+    printf("Listening new connections on %s:%u\n", ip_buf, sock_env->port);
+  }
+  // Sleep before accepting new connection if set
+  if (sock_env->listen_sleep > 0) {
+    usleep(sock_env->listen_sleep);
+  }
+  return rc;
+}

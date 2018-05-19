@@ -36,7 +36,7 @@ int		yasock_interactive(int sd, sock_env_t *sock_env) {
       FD_SET(STDIN, &readfds);
     }
     nfds = sd + 1;
-    if (select(nfds, &readfds, NULL, NULL, NULL)  < 0) {
+    if (select(nfds, &readfds, NULL, NULL, &(sock_env->select_timeout))  < 0) {
       perror("Error while doing select");
       break;
     }
@@ -57,7 +57,7 @@ int		yasock_interactive(int sd, sock_env_t *sock_env) {
 	    perror("[yasock_cli_interactive] shutdown failed");
 	  }
 	  if (rc >= 0 && YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG)) {
-	    printf("[yasock_cli_interactive] half-closed connection");
+	    fprintf(stderr, "[yasock_cli_interactive] half-closed connection\n");
 	  }
 	}
 	fprintf(stderr, "\n");

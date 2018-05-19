@@ -9,6 +9,7 @@
  */
 static	struct option	tab_options[] = {
   { "client",			no_argument,		0,	'c' },
+  { YASOCK_TCPINFO_OPT,		required_argument,	0,	'd' },
   { YASOCK_SHUTDOWN_OPT,	no_argument,		0,	'h' },
   { YASOCK_INTERACTIVE_OPT,	no_argument,		0,	'i' },
   { "write-count",		required_argument,	0,	'n' },
@@ -66,6 +67,7 @@ int		main(int argc, char **argv) {
     // one of option -s or -c is mandatory
   default:
     fprintf(stderr, "Don't known what to launch: client or server ?\n");
+    yasock_print_usage();
     rc = -1;
     break;
   }
@@ -76,8 +78,9 @@ int		main(int argc, char **argv) {
   exit(0);
 }
 
-int		yasock_init_env(sock_env_t **sock_env) {
-  int		rc = 0;
+int			yasock_init_env(sock_env_t **sock_env) {
+  int			rc = 0;
+  struct timeval	dft_select_timeout = YASOCK_SELECT_TIMEOUT;
   
   if (!sock_env) {
     fprintf(stderr, "Cannot initialize a null structure pointer\n");
@@ -96,17 +99,21 @@ int		yasock_init_env(sock_env_t **sock_env) {
   (*sock_env)->wr_count = YASOCK_DEFAULT_WR_COUNT;
   (*sock_env)->ttl = YASOCK_DEFAULT_TTL;
   (*sock_env)->tos = YASOCK_DEFAULT_TOS;
+  (*sock_env)->select_timeout = dft_select_timeout;
   // Defaults to interactive
   YASOCK_SET_FLAG((*sock_env)->opt_flags, YASOCK_INTERACTIVE_FLAG);
   return rc;
 }
-int		yasock_clean_env(sock_env_t **sock_env) {
-  int		rc = 0;
+int			yasock_clean_env(sock_env_t **sock_env) {
+  int			rc = 0;
 
   if (!sock_env) {
     return -1;
   }
   if (*sock_env) {
+    if ((*sock_env)->tcpi_file) {
+      free((*sock_env)->tcpi_file);
+    }
     if ((*sock_env)->ip_addr) {
       free((*sock_env)->ip_addr);
     }
@@ -119,10 +126,10 @@ int		yasock_clean_env(sock_env_t **sock_env) {
   return rc;
 }
 
-int		yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
-  int		rc = 0;
-  int		opt = 0;
-  int		option_index = -1;
+int			yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
+  int			rc = 0;
+  int			opt = 0;
+  int			option_index = -1;
 
   if (!argc || !argv || !sock_env) {
     return -1;
@@ -149,6 +156,13 @@ int		yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
       sock_env->mode = YASOCK_SOCK_CLIENT;
       if (optarg) {
 	sock_env->ip_addr = strdup(optarg);
+      }
+      break;
+      // TCP_INFO debug
+    case 'd':
+      if (optarg) {
+	YASOCK_SET_FLAG(sock_env->opt_flags, YASOCK_TCPINFO_FLAG);
+	sock_env->tcpi_file = strdup(optarg);
       }
       break;
       // Half close
@@ -269,9 +283,10 @@ void		yasock_print_version(void) {
 
 void		yasock_print_help(void) {
   // Print Description
-  printf("yasock is a client/server program which aim to manipulate TCP/IP socket properties. yasock can operate as client or as server.\n");
-  printf("Server mode listens on port (defaults to %u) and waits for arbitrary data from client.\n", YASOCK_DEFAULT_PORT);
-  printf("Client mode connects to the server program, sends arbitrary data to it and exits when done.\n");
+  printf("yasock is a client/server program that can manipulate TCP/IP socket properties. yasock can operate as client or as server and uses the port %u by default.\n", YASOCK_DEFAULT_PORT);
+  printf("Default operation is to wait for input from stdin and write it to peer, the connection is ended by typing Ctrl-D on one side.\n\n");
+  printf("On source/sink transfer (option -i), server mode reads arbitrary data from client and discards it.\n");
+  printf("Client mode connects to the server program, sends arbitrary data to it and exits when done. It can seen as a bulk transfer.\n");
   printf("\nOptions below are used to modify the behavior of the TCP/IP socket.\n");
   printf("\n");
   // Print usage for options
@@ -283,8 +298,9 @@ void		yasock_print_usage(void) {
 	 PACKAGE, PACKAGE);
   printf(" --help: Prints program description and exits\n");
   printf(" --version: Prints version of program and exits\n");
-  printf(" -h:    half closes TCP connexion after sending data\n");
-  printf(" -i     \"source\" data to socket, \"sink\" data from socket (w/-s)\n");
+  printf(" -d f:  get tcp_info and write results in csv file 'f' (should not be used with pauses (read/write/accept/connect))\n");
+  printf(" -h:    half closes TCP connexion on EOF input from stdin\n");
+  printf(" -i:    \"source\" data to socket, \"sink\" data from socket (w/-s)\n");
   printf(" -n n:  #buffers to write for \"source\" client (default %u)\n", YASOCK_DEFAULT_WR_COUNT);
   printf(" -p n:  #ms to pause between each read or write (source/sink)\n");
   printf(" -r n:  #bytes per read() for \"sink\" server (default %u)\n", YASOCK_DFT_READ_BUFSIZE);

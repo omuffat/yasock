@@ -11,6 +11,7 @@
 #include	<netinet/ip.h>
 #include	<netinet/tcp.h>
 #include	<arpa/inet.h>
+#include	<time.h>
 
 #include	<stdlib.h>
 #include	<string.h>
@@ -38,7 +39,7 @@
 #endif	// STDERR
 
 // Options related
-#define	YASOCK_OPTSTRING		"c:hin:p:r:svw:x:y:L:NO:P:Q:R:S:X:"
+#define	YASOCK_OPTSTRING		"c:d:hin:p:r:svw:x:y:L:NO:P:Q:R:S:X:"
 // version string for comparison in yasock_parse_options
 #define	YASOCK_INTERACTIVE_OPT		"interactive"
 #define	YASOCK_VERSION_OPT		"version"
@@ -47,6 +48,7 @@
 #define	YASOCK_LINGER_OPT		"linger"
 #define	YASOCK_RCVTIMEO_OPT		"rtimeout"
 #define	YASOCK_SNDTIMEO_OPT		"stimeout"
+#define	YASOCK_TCPINFO_OPT		"tcpinfo"
 
 // yasock Mode of processing
 #define	YASOCK_SOCK_UNKNOWN		0x00
@@ -56,7 +58,8 @@
 #define	YASOCK_SOCK_HELP		0x04
 
 // seconds, microsecond
-#define	YASOCK_DEFAULT_TIMEOUT		{ 0, 500000 }
+#define	YASOCK_DEFAULT_TIMEOUT		{ 0, 500000 } // 500 milliseconds
+#define	YASOCK_SELECT_TIMEOUT		{ 0, 10000 } // 10 milliseconds
 // Default number of write
 #define	YASOCK_DEFAULT_WR_COUNT		16
 // Default char used in write buffer
@@ -72,8 +75,8 @@
 
 // BUFFER SIZE
 #define	YASOCK_DFT_IP_BUFSIZE		64
-#define	YASOCK_DFT_READ_BUFSIZE		2048
-#define	YASOCK_DFT_WRITE_BUFSIZE	2048
+#define	YASOCK_DFT_READ_BUFSIZE		4096
+#define	YASOCK_DFT_WRITE_BUFSIZE	4096
 #define	YASOCK_MIN_SO_RCVBUF		256
 #define	YASOCK_MIN_SO_SNDBUF		2048
 
@@ -82,6 +85,7 @@
 #define	YASOCK_NODELAY_FLAG		0x0002
 #define	YASOCK_SHUTDOWN_FLAG		0x0004
 #define	YASOCK_INTERACTIVE_FLAG		0x0008
+#define	YASOCK_TCPINFO_FLAG		0x0010
 // OPTION FLAGS MACROs
 #define	YASOCK_SET_FLAG(set, flag)	((set) |= (flag))
 #define	YASOCK_ISSET_FLAG(set, flag)	(((set) & (flag)) == (flag))
@@ -105,8 +109,12 @@ typedef	struct		sock_env_s {
   // Linger option
   int			linger;
   // read/write timeout
+  struct timeval	select_timeout; // in milliseconds
   unsigned int		recv_timeout; // in milliseconds
   unsigned int		snd_timeout; // in milliseconds
+  // tcp_info related
+  char			*tcpi_file;
+  FILE			*tcpi_fd;
   // TCP/UDP related
   unsigned short	mss;
   unsigned short	port;
@@ -134,12 +142,14 @@ void		yasock_print_version(void);
  */
 int		yasock_launch_server(sock_env_t*);
 int		yasock_srv_readonly(int, sock_env_t*);
+int		yasock_do_listen(int, sock_env_t*);
 
 /*
  *	client.c
  */
 int		yasock_launch_client(sock_env_t*);
 int		yasock_writeonly(int, sock_env_t*);
+int		yasock_do_connect(int, sock_env_t*);
 
 /*
  *	io_interactive.c
@@ -156,5 +166,12 @@ int		yasock_set_socket_sockopt(int, sock_env_t*);
 int		yasock_set_socket_ipopt(int, sock_env_t*);
 // tcp level socket options
 int		yasock_set_socket_tcpopt(int, sock_env_t*);
+
+/*
+ *	tcp_info.c
+ */
+int		yasock_prepare_tcpi(sock_env_t*);
+int		yasock_write_tcpi(int, sock_env_t*);
+
 
 #endif	/* __YASOCK_H__ */
