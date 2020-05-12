@@ -72,6 +72,8 @@
 #define	YASOCK_DEFAULT_TOS		IPTOS_THROUGHPUT
 // Queue value for listen backlog
 #define	YASOCK_DEFAULT_BACKLOG		5
+// interactive input/output sleep (so we don't take 100% of CPU)
+#define	YASOCK_INTERACTIVE_USLEEP	100000 // in microseconds
 
 // BUFFER SIZE
 #define	YASOCK_DFT_IP_BUFSIZE		64

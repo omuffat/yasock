@@ -97,6 +97,7 @@ int		yasock_interactive(int sd, sock_env_t *sock_env) {
 	break;
       }
     } // End of FD_ISSET(sd, ...
+    usleep(YASOCK_INTERACTIVE_USLEEP);
   } // End of while(1)
   // Clean allocated data
   free(data_buf);
