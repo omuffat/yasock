@@ -60,6 +60,8 @@
 // seconds, microsecond
 #define	YASOCK_DEFAULT_TIMEOUT		{ 0, 500000 } // 500 milliseconds
 #define	YASOCK_SELECT_TIMEOUT		{ 0, 10000 } // 10 milliseconds
+#define	YASOCK_SELECT_ITIMEOUT		{ 0, 100000 } // select timeout for interactive mode
+#define	YASOCK_SELECT_STIMEOUT		{ 0, 10000 }  // select timeout for sink mode
 // Default number of write
 #define	YASOCK_DEFAULT_WR_COUNT		16
 // Default char used in write buffer
@@ -127,6 +129,7 @@ typedef	struct		sock_env_s {
   unsigned int		rd_buf_size;
   unsigned int		wr_buf_size;
   unsigned int		backlog;	// Queue size for server listen(2) call
+  int			*list_sd;	// List of client connections
 }			sock_env_t;
 
 /*
@@ -157,6 +160,11 @@ int		yasock_do_connect(int, sock_env_t*);
  *	io_interactive.c
  */
 int		yasock_interactive(int, sock_env_t*);
+/*
+ *	io.c
+ */
+int		yasock_io(int, sock_env_t*);
+int		yasock_accept(int, sock_env_t*);
 /*
  *	socket_opt.c
  */

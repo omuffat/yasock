@@ -120,6 +120,9 @@ int			yasock_clean_env(sock_env_t **sock_env) {
     if ((*sock_env)->mcast_addr) {
       free((*sock_env)->mcast_addr);
     }
+    if ((*sock_env)->list_sd) {
+      free((*sock_env)->list_sd);
+    }
     free(*sock_env);
     *sock_env = NULL;
   }

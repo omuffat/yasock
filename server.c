@@ -3,7 +3,7 @@
 
 int			yasock_launch_server(sock_env_t *sock_env) {
   int			rc = 0;
-  int			sd = -1;
+  int			listen_sd = -1;
   int			new_con_sd = -1;
   struct sockaddr_in	new_con;
   socklen_t		new_con_len = 0;
@@ -17,43 +17,47 @@ int			yasock_launch_server(sock_env_t *sock_env) {
   }
   // Create Socket
   // TODO:  handle UDP Stream mode
-  if ((sd = socket(sock_env->af_family, SOCK_STREAM, 0)) < 0) {
+  if ((listen_sd = socket(sock_env->af_family, SOCK_STREAM, 0)) < 0) {
     perror("Could not create a socket");
     return -1;
   }
   // Set up socket for listening
-  if ((rc = yasock_do_listen(sd, sock_env)) < 0) {
+  if ((rc = yasock_do_listen(listen_sd, sock_env)) < 0) {
     return rc;
   }
-  // Wait on a new connection. For now, handle only one connection
-  // Need to use select(2) to handle several connections. And make socket NON BLOCKING
-  new_con_len = sizeof(struct sockaddr_in);
-  if ((new_con_sd = accept(sd, (struct sockaddr*)&new_con, &new_con_len)) < -1) {
-    perror("Cannot accept a new connection");
-  }
-  // Verbose message for accepting a new connexion
-  inet_ntop(sock_env->af_family, (const void*)&(new_con.sin_addr), ip_buf, YASOCK_DFT_IP_BUFSIZE);
-  printf("Accepting connection from %s:%u\n", ip_buf, ntohs(new_con.sin_port));
-  // performs sleep after accept
-  if (sock_env->init_sleep > 0) {
-    usleep(sock_env->init_sleep);
-  }
-  // We have a client connected
-  // launch interactive or bulk transfer
-  if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_INTERACTIVE_FLAG)) {
-    rc = yasock_interactive(new_con_sd, sock_env);
-  } else {
-    rc = yasock_srv_readonly(new_con_sd, sock_env);
-  }
-  // Close client socket
-  if (sock_env->fin_sleep) {
-    usleep(sock_env->fin_sleep);
-  }
-  if (close(new_con_sd) < 0) {
-    perror("Error while closing client socket");
-  }
+  while (1) {
+    // Wait on a new connection. For now, handle only one connection
+    // Need to use select(2) to handle several connections. And make socket NON BLOCKING
+    new_con_len = sizeof(struct sockaddr_in);
+    if ((new_con_sd = accept(listen_sd, (struct sockaddr*)&new_con, &new_con_len)) < -1) {
+      perror("Cannot accept a new connection");
+      break;
+    }
+    // Verbose message for accepting a new connexion
+    inet_ntop(sock_env->af_family, (const void*)&(new_con.sin_addr), ip_buf, YASOCK_DFT_IP_BUFSIZE);
+    printf("Accepting connection from %s:%u\n", ip_buf, ntohs(new_con.sin_port));
+    // performs sleep after accept
+    if (sock_env->init_sleep > 0) {
+      usleep(sock_env->init_sleep);
+    }
+    // We have a client connected
+    // launch interactive or bulk transfer
+    if (YASOCK_ISSET_FLAG(sock_env->opt_flags, YASOCK_INTERACTIVE_FLAG)) {
+      rc = yasock_interactive(new_con_sd, sock_env);
+    } else {
+      rc = yasock_srv_readonly(new_con_sd, sock_env);
+    }
+    // Close client socket
+    if (sock_env->fin_sleep) {
+      usleep(sock_env->fin_sleep);
+    }
+    if (close(new_con_sd) < 0) {
+      perror("Error while closing client socket");
+      break;
+    }
+  } // End while (1)
   // Close listening socket
-  if (close(sd) < 0) {
+  if (close(listen_sd) < 0) {
     perror("Error while closing server socket");
   }
   return rc;
@@ -65,7 +69,8 @@ int			yasock_launch_server(sock_env_t *sock_env) {
  *
  *
  */
-int			yasock_srv_readonly(int cli_sd,	sock_env_t *sock_env) {
+int			yasock_srv_readonly(int cli_sd, sock_env_t *sock_env)
+{
   int			rc = 0;
   char			*data_buf = NULL;
   ssize_t		size_read = 0;

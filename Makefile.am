@@ -9,7 +9,7 @@
 ##
 AM_CFLAGS = $(WARNINGCFLAGS)
 bin_PROGRAMS= yasock
-yasock_SOURCES= main.c server.c client.c socket_opt.c io_interactive.c tcp_info.c yasock.h
+yasock_SOURCES= main.c server.c client.c socket_opt.c io_interactive.c tcp_info.c io.c yasock.h
 man1_MANS= yasock.man
 dist_man_MANS = $(man1_MANS)
 ## TO ADD library
