@@ -30,6 +30,7 @@ static	struct option	tab_options[] = {
   { "mss",			required_argument,	0,	'X' },
   { YASOCK_VERSION_OPT,		no_argument,		0,	0 },
   { YASOCK_HELP_OPT,		no_argument,		0,	0 },
+  { YASOCK_SRCPORT_OPT,		required_argument,	0,	0 },
   { 0,				0,			0,	0 }
 };
 
@@ -151,6 +152,12 @@ int			yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
 	  !strcmp(tab_options[option_index].name, YASOCK_HELP_OPT)) {
 	sock_env->mode = YASOCK_SOCK_HELP;
 	return 0;
+      }
+      // Source port
+      if (tab_options[option_index].name &&
+	  !strcmp(tab_options[option_index].name, YASOCK_SRCPORT_OPT)) {
+	sock_env->sport = atoi(optarg);
+	continue;
       }
       // Unknown long option, return error
       return -1;
@@ -323,6 +330,7 @@ void		yasock_print_usage(void) {
 #ifdef	HAVE_TCP_MAXSEG_H
   printf(" -X n:  Set the Maximum Segment Size (in bytes)\n");
 #endif	// HAVE_TCP_MAXSEG_H
+  printf(" --%s:  Set the source port for the client\n", YASOCK_SRCPORT_OPT);
   //printf(" \n");
   printf("\nReport bugs to <contact@comoe-networks.com>.\n");
 }

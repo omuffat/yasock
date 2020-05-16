@@ -182,7 +182,11 @@ int			yasock_do_connect(int sd, sock_env_t *sock_env) {
   case AF_INET:
     // Prepare local sockaddr_in structure for bind
     local_in.sin_family = sock_env->af_family;
-    local_in.sin_port = htons(YASOCK_ANY_PORT);
+    if (sock_env->sport) {
+      local_in.sin_port = htons(sock_env->sport);
+    } else {
+      local_in.sin_port = htons(YASOCK_ANY_PORT);
+    }
     local_in.sin_addr.s_addr = htonl(INADDR_ANY);
     sockaddr_len = sizeof(struct sockaddr_in);
     // Prepare remote sockaddr_in structure for connect

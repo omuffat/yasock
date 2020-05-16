@@ -49,6 +49,7 @@
 #define	YASOCK_RCVTIMEO_OPT		"rtimeout"
 #define	YASOCK_SNDTIMEO_OPT		"stimeout"
 #define	YASOCK_TCPINFO_OPT		"tcpinfo"
+#define	YASOCK_SRCPORT_OPT		"srcport"
 
 // yasock Mode of processing
 #define	YASOCK_SOCK_UNKNOWN		0x00
@@ -121,7 +122,8 @@ typedef	struct		sock_env_s {
   FILE			*tcpi_fd;
   // TCP/UDP related
   unsigned short	mss;
-  unsigned short	port;
+  unsigned short	port;	// listening port for server
+  unsigned short	sport; // source port for client
   // Buffer related
   unsigned int		so_rcvbuf;
   unsigned int		so_sndbuf;

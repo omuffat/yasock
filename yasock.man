@@ -72,5 +72,8 @@ Set the #bytes for the socket sending buffer (SO_SNDBUF option). Some Kernels do
 .TP
 \fB\-X\fR n:
 Set the Maximum Segment Size (in bytes)
+.TP
+\fB\-\-srcport\fR:
+Set the source port for the client
 .SH "REPORTING BUGS"
 Report bugs to <contact@comoe\-networks.com>.
