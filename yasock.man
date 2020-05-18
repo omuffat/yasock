@@ -49,6 +49,9 @@ verbose
 \fB\-y\fR n
 #ms for SO_SNDTIMEO (send timeout)
 .TP
+\fB\-C\fR s
+Use the congestion algorithm 's' for tcp socket
+.TP
 \fB\-L\fR n
 SO_LINGER option, n = linger time (in seconds)
 .TP

@@ -4349,6 +4349,26 @@ $as_echo "#define HAVE_TCP_MAXSEG_H 1" >>confdefs.h
 
 fi
 
+# TCP_CONGESTION for setsockopt
+ac_fn_c_check_decl "$LINENO" "TCP_CONGESTION" "ac_cv_have_decl_TCP_CONGESTION" "  #ifdef HAVE_SYS_SOCKET_H
+	      	 # include <sys/socket.h>
+		 #endif
+		 #ifdef HAVE_NETINET_IN_H
+	      	 # include <netinet/in.h>
+		 #endif
+		 #ifdef HAVE_NETINET_IN_H
+	      	 # include <netinet/tcp.h>
+		 #endif
+
+
+"
+if test "x$ac_cv_have_decl_TCP_CONGESTION" = xyes; then :
+
+
+$as_echo "#define HAVE_TCP_CONGESTION_H 1" >>confdefs.h
+
+fi
+
 
 
 

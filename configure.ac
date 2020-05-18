@@ -94,6 +94,20 @@ AC_CHECK_DECL([TCP_MAXSEG], [
 		 #endif
 		 ]]
 		)
+# TCP_CONGESTION for setsockopt
+AC_CHECK_DECL([TCP_CONGESTION], [
+			AC_DEFINE([HAVE_TCP_CONGESTION_H], 1, [Define to 1 if you have TCP_CONGESTION option])],
+			[], [[  #ifdef HAVE_SYS_SOCKET_H
+	      	 # include <sys/socket.h>
+		 #endif
+		 #ifdef HAVE_NETINET_IN_H
+	      	 # include <netinet/in.h>
+		 #endif
+		 #ifdef HAVE_NETINET_IN_H
+	      	 # include <netinet/tcp.h>
+		 #endif
+		 ]]
+		 )
 
 
 dnl AC_MSG_CHECKING("whether flock struct is linux ordered or not")

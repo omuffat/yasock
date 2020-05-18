@@ -28,6 +28,7 @@ static	struct option	tab_options[] = {
   { "rcv-buf",			required_argument,	0,	'R' },
   { "snd-buf",			required_argument,	0,	'S' },
   { "mss",			required_argument,	0,	'X' },
+  { YASOCK_CONGESTION_OPT,	required_argument,	0,	'C' },
   { YASOCK_VERSION_OPT,		no_argument,		0,	0 },
   { YASOCK_HELP_OPT,		no_argument,		0,	0 },
   { YASOCK_SRCPORT_OPT,		required_argument,	0,	0 },
@@ -120,6 +121,9 @@ int			yasock_clean_env(sock_env_t **sock_env) {
     }
     if ((*sock_env)->mcast_addr) {
       free((*sock_env)->mcast_addr);
+    }
+    if ((*sock_env)->congestion_algo) {
+      free((*sock_env)->congestion_algo);
     }
     if ((*sock_env)->list_sd) {
       free((*sock_env)->list_sd);
@@ -227,10 +231,24 @@ int			yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
 	sock_env->snd_timeout = atoi(optarg);
       }
       break;
+      // Congestion Algorithm
+    case 'C':
+      if (optarg) {
+#ifdef	HAVE_TCP_CONGESTION_H
+	sock_env->congestion_algo = strdup(optarg);
+#else
+	printf("Warning: Cannot set congestion algorithm on this system (Does not have setsockopt TCP_CONGESTION).\n");
+#endif	// HAVE_TCP_CONGESTION_H
+      }
+      break;
       // SO_LINGER socket option (see socket(7))
     case 'L':
       if (optarg) {
+#ifdef	HAVE_SO_LINGER_H
 	sock_env->linger = atoi(optarg);
+#else
+	printf("Warning: Cannot set Linger on this system (Does not have setsockopt TCP_LINGER).\n");
+#endif	// HAVE_SO_LINGER_H
       }
       break;
       // NO_DELAY tcp socket option (disable nagle algorithm)
@@ -318,6 +336,9 @@ void		yasock_print_usage(void) {
   printf(" -w n:  #bytes per write() for \"source\" server (default %u)\n", YASOCK_DFT_WRITE_BUFSIZE);
   printf(" -x n   #ms for SO_RCVTIMEO (receive timeout)\n");
   printf(" -y n   #ms for SO_SNDTIMEO (send timeout)\n");
+#ifdef	HAVE_TCP_CONGESTION_H
+  printf(" -C s   Use the congestion algorithm 's' for tcp socket\n");
+#endif	// HAVE_TCP_CONGESTION_H
 #ifdef	HAVE_SO_LINGER_H
   printf(" -L n   SO_LINGER option, n = linger time (in seconds)\n");
 #endif	// HAVE_SO_LINGER_H

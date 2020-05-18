@@ -145,6 +145,15 @@ int			yasock_set_socket_tcpopt(int sd, sock_env_t *sock_env) {
       perror("[yasock_set_socket_tcpopt] Could not disable Nagle algorithm");
     }
   }
+#ifdef	HAVE_TCP_CONGESTION_H
+  if (sock_env->congestion_algo) {
+    rc = setsockopt(sd, IPPROTO_TCP, TCP_CONGESTION, sock_env->congestion_algo,
+		    strlen(sock_env->congestion_algo));
+    if (rc < 0) {
+      perror("[yasock_set_socket_tcpopt] Could not set the specified congestion algorithm");
+    }
+  }
+#endif	// HAVE_TCP_CONGESTION_H
 #ifdef	HAVE_TCP_MAXSEG_H
   /*
    *	on *BSD systems, net.inet.tcp.mssdflt is usually set to 536.
