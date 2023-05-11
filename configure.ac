@@ -13,7 +13,7 @@ dnl arguments of macro should be enclosed within '[' and ']'
 dnl End of tuto
 
 # Always start with AC_INIT
-AC_INIT([Yet Another Sock Program], [0.2.1], [contact@comoe-networks.com],
+AC_INIT([Yet Another Sock Program], [0.3.0], [contact@comoe-networks.com],
 	     [yasock], [https://github.com/omuffat/yasock])
 dnl Set option for automake in this macro call
 AM_INIT_AUTOMAKE()

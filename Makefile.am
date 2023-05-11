@@ -24,3 +24,35 @@ endif
 
 yasock.man: main.c
 	-$(HELP2MAN) --output=$@ -N --no-discard-stderr ./yasock
+
+
+BUILD_DIR=$(PACKAGE)_$(VERSION)-$(PKG_REVISION)_amd64
+PKG_REVISION=1
+
+# Installation du package avec ses dépendances:
+# sudo apt install ./<<package>>.deb
+
+build-pkg: yasock
+	[ -d ./$(BUILD_DIR) ] || mkdir ./$(BUILD_DIR)
+	[ -d ./$(BUILD_DIR)/DEBIAN ] || mkdir -p ./$(BUILD_DIR)/DEBIAN
+	[ -d ./$(BUILD_DIR)${prefix}/bin ] || mkdir -p ./$(BUILD_DIR)${prefix}/bin
+	/bin/cp ./yasock ./$(BUILD_DIR)/${prefix}/bin
+	echo `md5sum ./$(BUILD_DIR)/${prefix}/bin/yasock` >> ./$(BUILD_DIR)/DEBIAN/md5sums
+	/bin/chmod 755 ./$(BUILD_DIR)${prefix}/bin/yasock
+	echo "10" > ./$(BUILD_DIR)/DEBIAN/compat
+	echo -n > ./$(BUILD_DIR)/DEBIAN/control
+	echo 'Package: ' $(PACKAGE) >> ./$(BUILD_DIR)/DEBIAN/control
+	echo 'Package-Type: deb' >> ./$(BUILD_DIR)/DEBIAN/control
+	echo 'Version: ' $(VERSION) >> ./$(BUILD_DIR)/DEBIAN/control
+	echo 'Section: utils' >> ./$(BUILD_DIR)/DEBIAN/control
+	echo 'Priority: optional' >> ./$(BUILD_DIR)/DEBIAN/control
+	echo 'Architecture: amd64' >> ./$(BUILD_DIR)/DEBIAN/control
+	echo 'Depends: ' >> ./$(BUILD_DIR)/DEBIAN/control
+	echo 'Maintainer: @PACKAGE_BUGREPORT@' >> ./$(BUILD_DIR)/DEBIAN/control
+	echo 'Homepage: @PACKAGE_URL@' >> ./$(BUILD_DIR)/DEBIAN/control
+	echo 'Description: @PACKAGE_NAME@' >> ./$(BUILD_DIR)/DEBIAN/control
+	dpkg-deb  --root-owner-group --build ./$(BUILD_DIR) && rm -rf ./$(BUILD_DIR)
+
+
+mostlyclean-local:
+	-rm -rf ./$(BUILD_DIR)
