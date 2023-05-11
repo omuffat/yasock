@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 	### Removed
 
+## [0.3.0] - 2023-05-11
+	### Added
+	* add 'build-pkg' for debian package
+	* add TCP User Timeout in options
+	### Changed
+
+
+	### Removed
+
 ## [0.2.1] - 2018-05-12
 	### Added
 	interactive transfer has been added and is the default. Use -i to change to bulk transfer
