@@ -172,5 +172,14 @@ int			yasock_set_socket_tcpopt(int sd, sock_env_t *sock_env) {
     }
   }
 #endif	// HAVE_TCP_MAXSEG_H
+  // User Timeout
+  if (sock_env->user_timeout) {
+    value = (unsigned int)sock_env->user_timeout;
+    rc = setsockopt(sd, IPPROTO_TCP, TCP_USER_TIMEOUT, &value, sizeof(unsigned int));
+    if (rc < 0) {
+      perror("[yasock_set_socket_tcpopt] Could not set User Timeout Value");
+    }
+  }
+  
   return rc;
 }

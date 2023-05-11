@@ -16,6 +16,7 @@ static	struct option	tab_options[] = {
   { "sleep-rw",			required_argument,	0,	'p' },
   { "read-buffer",		required_argument,	0,	'r' },
   { "server",			no_argument,		0,	's' },
+  { YASOCK_USERTIMEOUT_OPT,	required_argument,	0,	'u' },
   { "verbose",			no_argument,		0,	'v' },
   { "write-buffer",		required_argument,	0,	'w' },
   { YASOCK_RCVTIMEO_OPT,	required_argument,	0,	'x' },
@@ -209,6 +210,10 @@ int			yasock_parse_options(int argc, char **argv, sock_env_t *sock_env) {
     case 's':
       sock_env->mode = YASOCK_SOCK_SERVER;
       break;
+      // User Timeout
+    case 'u':
+      sock_env->user_timeout = atoi(optarg);
+      break;
       // Verbose
     case 'v':
       YASOCK_SET_FLAG(sock_env->opt_flags, YASOCK_VERBOSE_FLAG);
@@ -332,6 +337,7 @@ void		yasock_print_usage(void) {
   printf(" -n n:  #buffers to write for \"source\" client (default %u)\n", YASOCK_DEFAULT_WR_COUNT);
   printf(" -p n:  #ms to pause between each read or write (source/sink)\n");
   printf(" -r n:  #bytes per read() for \"sink\" server (default %u)\n", YASOCK_DFT_READ_BUFSIZE);
+  printf(" -u n:  #seconds that transmitted data may remain unacknowledged before TCP will forcibly close the corresponding connection and return ETIMEDOUT to the application (default unset).\n");
   printf(" -v:    verbose\n");
   printf(" -w n:  #bytes per write() for \"source\" server (default %u)\n", YASOCK_DFT_WRITE_BUFSIZE);
   printf(" -x n   #ms for SO_RCVTIMEO (receive timeout)\n");

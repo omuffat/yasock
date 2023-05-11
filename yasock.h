@@ -39,7 +39,7 @@
 #endif	// STDERR
 
 // Options related
-#define	YASOCK_OPTSTRING		"c:d:hin:p:r:svw:x:y:C:L:NO:P:Q:R:S:X:"
+#define	YASOCK_OPTSTRING		"c:d:hin:p:r:su:vw:x:y:C:L:NO:P:Q:R:S:X:"
 // version string for comparison in yasock_parse_options
 #define	YASOCK_INTERACTIVE_OPT		"interactive"
 #define	YASOCK_VERSION_OPT		"version"
@@ -51,6 +51,7 @@
 #define	YASOCK_TCPINFO_OPT		"tcpinfo"
 #define	YASOCK_SRCPORT_OPT		"srcport"
 #define	YASOCK_CONGESTION_OPT		"congestion"
+#define	YASOCK_USERTIMEOUT_OPT		"user-timeout"
 
 // yasock Mode of processing
 #define	YASOCK_SOCK_UNKNOWN		0x00
@@ -116,6 +117,8 @@ typedef	struct		sock_env_s {
   char			*congestion_algo;
   // Linger option
   int			linger;
+  // User Timeout (see RFC 5482)
+  unsigned int		user_timeout;
   // read/write timeout
   struct timeval	select_timeout; // in milliseconds
   unsigned int		recv_timeout; // in milliseconds
